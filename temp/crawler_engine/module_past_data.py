@@ -226,6 +226,9 @@ async def scrape_old_async(
 
         data_link, max_age = filter_data_link(data_links, source, today, max_days)
 
+        if not len(data_link):
+            continue
+
         data_link_chunks = np.array_split(data_link, len(data_link) // n_workers)
 
         for pkg in tqdm(data_link_chunks, desc=f"Page: {page_idx}/{n_pages}"):
