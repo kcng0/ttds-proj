@@ -4,6 +4,7 @@ import requests
 import xmltodict
 import json, re, os, sys
 import asyncio
+import time
 
 from bs4 import BeautifulSoup as soup
 from tqdm import tqdm
@@ -214,15 +215,29 @@ async def scrape_old_async(
 
     for page_idx, page in enumerate(page_links):
         if "telegraph" in source:
-            r = req_get(page)
-            data_url_target = soup(r.content)
+            r, content = req_get(page, return_content=True)
+            data_url_target = soup(content)
             data_links = get_link_and_date(
                 data_url_target, prefix="https://www.telegraph.co.uk"
             )
         else:
-            r = req_get(page)
-            data = xmltodict.parse(r.content)
-            data_links = data["urlset"]["url"]
+            r, content = req_get(page, waittime=5, return_content=True)
+            data = xmltodict.parse(content)
+            data_links = data["urlset"]["url"]            
+            # iter_ = 0
+            # while True:
+            #     try:
+            #         r, content = req_get(page, return_content=True)
+            #         data = xmltodict.parse(content)
+            #         data_links = data["urlset"]["url"]
+            #         break
+            #     except:
+            #         print("RTO")
+            #         iter_ += 1
+            #         time.sleep(30)
+
+            #         if iter_ > 5:
+            #             continue
 
         data_link, max_age = filter_data_link(data_links, source, today, max_days)
 

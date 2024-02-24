@@ -72,10 +72,15 @@ def get_link_and_date(soup_data, prefix="https://www.telegraph.co.uk"):
     return link_date
 
 
-def req_get(url, timeout=2, waittime=2):
+def req_get(url, timeout=2, waittime=2, return_content=False):
     while True:
         try:
             r = requests.get(url, timeout=timeout)  # 10 seconds
+            if return_content:
+                content = r.content
+                if not len(content):
+                    continue
+                return r, content
             break
         except (requests.exceptions.Timeout, OSError):
             print("Timed out or OSError")

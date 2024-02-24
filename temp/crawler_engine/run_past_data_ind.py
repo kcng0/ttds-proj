@@ -20,9 +20,9 @@ if __name__ == "__main__":
         scrape_old_async(
             url_target=url_target,
             n_workers=6,
-            max_days=180,
-            batch_size=300,
-            output_path="data/ind/ind_data_{}_{}.csv",
+            max_days=360,
+            batch_size=500,
+            output_path="data/ind-2/ind_data_{}_{}.csv",
             n_pages=n_pages,
             debug=False,
         )
