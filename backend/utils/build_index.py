@@ -182,28 +182,6 @@ def delta_encode_positions(positions):
     return delta_encoded
 
 
-def save_delta_index_file(
-    file_name: str,
-    index: DefaultDict[str, Dict[str, list]],
-    output_dir: str = "binary_file",
-):
-    if not os.path.exists(os.path.join(CURRENT_DIR, output_dir)):
-        os.mkdir(os.path.join(CURRENT_DIR, output_dir))
-    index_output = dict(sorted(index.items()))
-    with open(os.path.join(CURRENT_DIR, output_dir, file_name), "wb") as f:
-        for term, record in index_output.items():
-            if term == "document_size" or term == "doc_ids_list":
-                continue
-            record = dict(sorted(record.items(), key=lambda x: int(x[0])))
-            f.write(f"{term} {len(record)}\n".encode("utf8"))
-            for doc_id, positions in record.items():
-                # Apply delta encoding here
-                delta_positions = delta_encode_positions(positions)
-                # Convert delta-encoded positions back to strings for storage
-                positions_str = ",".join(str(pos) for pos in delta_positions)
-                f.write(f"\t{doc_id}: {positions_str}\n".encode("utf8"))
-
-
 def delta_decode_positions(delta_encoded):
     """Reconstruct the original list of positions from a delta-encoded list."""
     positions = [delta_encoded[0]] if delta_encoded else []
@@ -212,37 +190,59 @@ def delta_decode_positions(delta_encoded):
     return positions
 
 
-def decode_positions(data):
-    """Recursively decode delta-encoded position lists in the index data."""
-    if isinstance(data, dict):
-        return {key: decode_positions(value) for key, value in data.items()}
-    elif isinstance(data, list) and all(isinstance(x, int) for x in data):
-        # Assuming the list is of integers, decode it if it's delta-encoded
-        return delta_decode_positions(data)
-    else:
-        return data
+# def save_delta_index_file(
+#     file_name: str,
+#     index: DefaultDict[str, Dict[str, list]],
+#     output_dir: str = "binary_file",
+# ):
+#     if not os.path.exists(os.path.join(CURRENT_DIR, output_dir)):
+#         os.mkdir(os.path.join(CURRENT_DIR, output_dir))
+#     index_output = dict(sorted(index.items()))
+#     with open(os.path.join(CURRENT_DIR, output_dir, file_name), "wb") as f:
+#         for term, record in index_output.items():
+#             if term == "document_size" or term == "doc_ids_list":
+#                 continue
+#             record = dict(sorted(record.items(), key=lambda x: int(x[0])))
+#             f.write(f"{term} {len(record)}\n".encode("utf8"))
+#             for doc_id, positions in record.items():
+#                 # Apply delta encoding here
+#                 delta_positions = delta_encode_positions(positions)
+#                 # Convert delta-encoded positions back to strings for storage
+#                 positions_str = ",".join(str(pos) for pos in delta_positions)
+#                 f.write(f"\t{doc_id}: {positions_str}\n".encode("utf8"))
 
 
-def delta_encoding(index: DefaultDict[str, Dict[str, list]]):
-    for term, record in index.items():
-        for doc_id, positions in record.items():
-            index[term][doc_id] = delta_encode_positions(positions)
+# def decode_positions(data):
+#     """Recursively decode delta-encoded position lists in the index data."""
+#     if isinstance(data, dict):
+#         return {key: decode_positions(value) for key, value in data.items()}
+#     elif isinstance(data, list) and all(isinstance(x, int) for x in data):
+#         # Assuming the list is of integers, decode it if it's delta-encoded
+#         return delta_decode_positions(data)
+#     else:
+#         return data
 
 
-def delta_decoding(index: DefaultDict[str, Dict[str, list]]):
-    for term, record in index.items():
-        for doc_id, positions in record.items():
-            index[term][doc_id] = delta_decode_positions(positions)
+# def delta_encoding(index: DefaultDict[str, Dict[str, list]]):
+#     for term, record in index.items():
+#         for doc_id, positions in record.items():
+#             index[term][doc_id] = delta_encode_positions(positions)
 
 
-def load_delta_encoded_index(file_name: str, output_dir: str = "binary_file") -> dict:
-    path = os.path.join(CURRENT_DIR, output_dir, file_name)
-    with open(path, "rb") as f:
-        data = orjson.loads(f.read().decode("utf8"))
+# def delta_decoding(index: DefaultDict[str, Dict[str, list]]):
+#     for term, record in index.items():
+#         for doc_id, positions in record.items():
+#             index[term][doc_id] = delta_decode_positions(positions)
 
-    # Apply delta decoding to the loaded data
-    index = decode_positions(data)
-    return index
+
+# def load_delta_encoded_index(file_name: str, output_dir: str = "binary_file") -> dict:
+#     path = os.path.join(CURRENT_DIR, output_dir, file_name)
+#     with open(path, "rb") as f:
+#         data = orjson.loads(f.read().decode("utf8"))
+
+#     # Apply delta decoding to the loaded data
+#     index = decode_positions(data)
+#     return index
 
 
 def build_child_index(
@@ -288,33 +288,6 @@ def build_child_index(
             "index/child",
         )
 
-
-# # this one is failed
-# def build_global_index(child_index_path: str, global_index_path: str):
-#     start_time = time.time()
-#     document_size = 0
-#     doc_ids_list = []
-#     index = defaultdict(default_dict_list)
-#     child_index_file_list = [file for file in os.listdir(child_index_path) if file.endswith(".json")]
-#     for file in child_index_file_list:
-#         child_index = InvertedIndex.model_validate_json(read_binary_file(os.path.join(child_index_path, file)))
-#         document_size += child_index.meta.document_size
-#         doc_ids_list.extend(child_index.meta.doc_ids_list)
-#         merge_inverted_indices(index, child_index.index)
-#         print(f"Processed {file}")
-
-#     print(f"Finsihed processing {len(child_index_file_list)} child index files")
-
-#     inverted_index_meta = InvertedIndexMetadata(
-#         document_size=document_size,
-#         doc_ids_list=doc_ids_list)
-#     inverted_index = InvertedIndex(
-#         meta=inverted_index_meta,
-#         index=index
-#     )
-
-#     save_json_file("global_index.json", inverted_index.model_dump(), global_index_path)
-#     print(f"Time taken for building global index: {time.time() - start_time:.2f} seconds")
 
 
 if __name__ == "__main__":

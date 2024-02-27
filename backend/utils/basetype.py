@@ -94,7 +94,7 @@ class InvertedIndex(BaseModel):
     ]
     """Inverted index key: term, value: dictionary of doc_id and list of positions"""
 
-
+# add sentiment?
 if __name__ == "__main__":
     json_string = """
     {
