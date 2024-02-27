@@ -223,10 +223,10 @@ def delta_decode_positions(delta_encoded):
 #         return data
 
 
-# def delta_encoding(index: DefaultDict[str, Dict[str, list]]):
-#     for term, record in index.items():
-#         for doc_id, positions in record.items():
-#             index[term][doc_id] = delta_encode_positions(positions)
+def delta_encoding(index: DefaultDict[str, Dict[str, list]]):
+    for term, record in index.items():
+        for doc_id, positions in record.items():
+            index[term][doc_id] = delta_encode_positions(positions)
 
 
 # def delta_decoding(index: DefaultDict[str, Dict[str, list]]):
@@ -281,7 +281,7 @@ def build_child_index(
             source, date, indices_batch[0], indices_batch[-1]
         )
         inverted_index = positional_inverted_index(news_batch)
-        delta_encoding(inverted_index.index)
+        # delta_encoding(inverted_index.index)
         save_json_file(
             f"{source.value}_{date}_{indices_batch[0]}_{indices_batch[-1]}.json",
             inverted_index.model_dump(),
