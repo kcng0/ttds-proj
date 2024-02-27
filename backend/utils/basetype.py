@@ -5,6 +5,7 @@ from datetime import date
 from collections import defaultdict
 from typing import List, DefaultDict
 
+
 class Result(BaseModel):
     id: str
     title: str
@@ -12,7 +13,8 @@ class Result(BaseModel):
     url: str
     score: float
     timestamp: int
-    
+
+
 class NewsArticleData(BaseModel):
     title: str
     """Title of the news"""
@@ -28,9 +30,10 @@ class NewsArticleData(BaseModel):
     """Figure caption: key: index, value: text caption"""
     url: str
     """Url of the news"""
+
     class Config:
-        extra = 'ignore'
-        
+        extra = "ignore"
+
     def __init__(self, **data):
         if type(data["hypertext"]) == str:
             try:
@@ -43,9 +46,11 @@ class NewsArticleData(BaseModel):
             except orjson.JSONDecodeError:
                 print(f"Error in figcaption: {data['figcaption']}")
         super().__init__(**data)
-    
+
+
 class NewsArticlesFragment(BaseModel):
     """Used to represent single fragment of news data (per csv file)"""
+
     source: str
     """Name of the news source"""
     date: date
@@ -55,31 +60,41 @@ class NewsArticlesFragment(BaseModel):
     articles: List[NewsArticleData]
     """List of news articles"""
 
+
 class NewsArticlesBatch(BaseModel):
     """Used to represent single batch of source/combined news articles for different sources"""
+
     doc_ids: List[int]
     """Document IDs of the news articles"""
     indices: DefaultDict[str, List[str]]
     """Indices of the news articles for each source"""
     fragments: DefaultDict[str, List[NewsArticlesFragment]]
     """Fragments of the news articles for each source"""
-    
+
 
 class InvertedIndexMetadata(BaseModel):
     document_size: int
     """Number of documents in the index"""
     doc_ids_list: List[int]
     """List of document IDs"""
-    
+
+
 def default_dict_list():
     return defaultdict(list)
+
 
 class InvertedIndex(BaseModel):
     meta: InvertedIndexMetadata
     """Metadata of the index"""
-    index: DefaultDict[str, Annotated[DefaultDict[str, List[int]], Field(default_factory=default_dict_list)]]
+    index: DefaultDict[
+        str,
+        Annotated[
+            DefaultDict[str, List[int]], Field(default_factory=default_dict_list)
+        ],
+    ]
     """Inverted index key: term, value: dictionary of doc_id and list of positions"""
-    
+
+
 if __name__ == "__main__":
     json_string = """
     {
@@ -106,4 +121,3 @@ if __name__ == "__main__":
     """
     index = InvertedIndex.model_validate_json(json_string)
     print(index)
-    
