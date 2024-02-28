@@ -191,7 +191,6 @@ def delta_decode_list(delta_encoded):
 
 
 def encode_index(inverted_index: InvertedIndex):
-    """Delta-encode postings list, doc_ids for each term and positions."""
     # Delta encode postings list
     inverted_index.meta.doc_ids_list = delta_encode_list(
         inverted_index.meta.doc_ids_list
@@ -199,6 +198,11 @@ def encode_index(inverted_index: InvertedIndex):
 
     # Delta encode the doc_ids and the positions
     for term, record in inverted_index.index.items():
+
+        # Delta encode the positions
+        for doc_id, positions in record.items():
+            inverted_index.index[term][doc_id] = delta_encode_list(positions)
+
         # Delta encode doc ids
         old_keys = list(record.keys())
         old_keys_int = list(map(int, old_keys))  # convert to int
@@ -213,10 +217,6 @@ def encode_index(inverted_index: InvertedIndex):
             new_record[new_key] = record[old_key]  # Move item to new key in new_record
         inverted_index.index[term] = new_record
 
-        # Delta encode the positions
-        for doc_id, positions in record.items():
-            inverted_index.index[term][doc_id] = delta_encode_list(positions)
-
 
 def decode_index(inverted_index: InvertedIndex):
     """Delta-decode postings list, doc_ids for each term and positions."""
@@ -226,6 +226,10 @@ def decode_index(inverted_index: InvertedIndex):
     )
     # Decode the doc_ids and the positions
     for term, record in inverted_index.index.items():
+        # Decode the positions
+        for doc_id, positions in record.items():
+            inverted_index.index[term][doc_id] = delta_decode_list(positions)
+
         # Decode doc ids
         old_keys = list(record.keys())
         old_keys_int = list(map(int, old_keys))  # convert to int
@@ -239,11 +243,6 @@ def decode_index(inverted_index: InvertedIndex):
         for old_key, new_key in changes.items():
             new_record[new_key] = record[old_key]
         inverted_index.index[term] = new_record
-
-        # Decode the positions
-        for doc_id, positions in record.items():
-
-            inverted_index.index[term][doc_id] = delta_decode_list(positions)
 
 
 def build_child_index(
@@ -288,7 +287,6 @@ def build_child_index(
             inverted_index.model_dump(),
             "index/child",
         )
-
 
 
 if __name__ == "__main__":
