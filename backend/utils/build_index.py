@@ -171,7 +171,7 @@ def merge_inverted_indices(
                 )
 
 
-def delta_encode_positions(positions):
+def delta_encode_list(positions):
     """Convert a list of positions into a delta-encoded list."""
     if not positions:
         return []
@@ -182,7 +182,7 @@ def delta_encode_positions(positions):
     return delta_encoded
 
 
-def delta_decode_positions(delta_encoded):
+def delta_decode_list(delta_encoded):
     """Reconstruct the original list of positions from a delta-encoded list."""
     positions = [delta_encoded[0]] if delta_encoded else []
     for delta in delta_encoded[1:]:
@@ -223,16 +223,16 @@ def delta_decode_positions(delta_encoded):
 #         return data
 
 
-def delta_encoding(index: DefaultDict[str, Dict[str, list]]):
+def encode_index(index: DefaultDict[str, Dict[str, list]]):
     for term, record in index.items():
         for doc_id, positions in record.items():
-            index[term][doc_id] = delta_encode_positions(positions)
+            index[term][doc_id] = delta_encode_list(positions)
 
 
-# def delta_decoding(index: DefaultDict[str, Dict[str, list]]):
-#     for term, record in index.items():
-#         for doc_id, positions in record.items():
-#             index[term][doc_id] = delta_decode_positions(positions)
+def decode_index(index: DefaultDict[str, Dict[str, list]]):
+    for term, record in index.items():
+        for doc_id, positions in record.items():
+            index[term][doc_id] = delta_decode_list(positions)
 
 
 # def load_delta_encoded_index(file_name: str, output_dir: str = "binary_file") -> dict:
@@ -281,7 +281,7 @@ def build_child_index(
             source, date, indices_batch[0], indices_batch[-1]
         )
         inverted_index = positional_inverted_index(news_batch)
-        # delta_encoding(inverted_index.index)
+        encode_index(inverted_index.index)
         save_json_file(
             f"{source.value}_{date}_{indices_batch[0]}_{indices_batch[-1]}.json",
             inverted_index.model_dump(),
