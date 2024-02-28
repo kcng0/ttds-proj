@@ -190,59 +190,80 @@ def delta_decode_list(delta_encoded):
     return positions
 
 
-def encode_index(inverted_index: InvertedIndex):
-    # Delta encode postings list
-    inverted_index.meta.doc_ids_list = delta_encode_list(
-        inverted_index.meta.doc_ids_list
-    )
+def encode_index(
+    inverted_index: InvertedIndex,
+    encode_meta_doc_ids=False,
+    encode_positions=True,
+    encode_term_doc_ids=False,
+):
+    """Delta-encode meta doc ids, and for each term, doc ids and positions"""
+    if encode_meta_doc_ids:
+        # Delta encode meta doc_ids
+        inverted_index.meta.doc_ids_list = delta_encode_list(
+            inverted_index.meta.doc_ids_list
+        )
 
     # Delta encode the doc_ids and the positions
     for term, record in inverted_index.index.items():
 
-        # Delta encode the positions
-        for doc_id, positions in record.items():
-            inverted_index.index[term][doc_id] = delta_encode_list(positions)
+        if encode_positions:
+            # Delta encode the positions
+            for doc_id, positions in record.items():
+                inverted_index.index[term][doc_id] = delta_encode_list(positions)
 
-        # Delta encode doc ids
-        old_keys = list(record.keys())
-        old_keys_int = list(map(int, old_keys))  # convert to int
-        delta_encoded_keys_int = delta_encode_list(old_keys_int)
-        changes = dict(
-            zip(old_keys, map(str, delta_encoded_keys_int))
-        )  # map back to string
+        if encode_term_doc_ids:
+            # Delta encode doc ids
+            old_keys = list(record.keys())
+            old_keys_int = list(map(int, old_keys))  # convert to int
+            delta_encoded_keys_int = delta_encode_list(old_keys_int)
+            changes = dict(
+                zip(old_keys, map(str, delta_encoded_keys_int))
+            )  # map back to string
 
-        # Apply changes to the keys
-        new_record = {}  # Temporary dictionary to store updated records
-        for old_key, new_key in changes.items():
-            new_record[new_key] = record[old_key]  # Move item to new key in new_record
-        inverted_index.index[term] = new_record
+            # Apply changes to the keys
+            new_record = {}  # Temporary dictionary to store updated records
+            for old_key, new_key in changes.items():
+                new_record[new_key] = record[
+                    old_key
+                ]  # Move item to new key in new_record
+            inverted_index.index[term] = new_record
 
 
-def decode_index(inverted_index: InvertedIndex):
-    """Delta-decode postings list, doc_ids for each term and positions."""
-    # Decode postings list
-    inverted_index.meta.doc_ids_list = delta_decode_list(
-        inverted_index.meta.doc_ids_list
-    )
+def decode_index(
+    inverted_index: InvertedIndex,
+    decode_meta_doc_ids=False,
+    decode_positions=True,
+    decode_term_doc_ids=False,
+):
+    """Delta-decode meta doc ids, and for each term, doc ids and positions"""
+    if decode_meta_doc_ids:
+        # Decode meta doc_ids
+        inverted_index.meta.doc_ids_list = delta_decode_list(
+            inverted_index.meta.doc_ids_list
+        )
+
     # Decode the doc_ids and the positions
     for term, record in inverted_index.index.items():
-        # Decode the positions
-        for doc_id, positions in record.items():
-            inverted_index.index[term][doc_id] = delta_decode_list(positions)
 
-        # Decode doc ids
-        old_keys = list(record.keys())
-        old_keys_int = list(map(int, old_keys))  # convert to int
-        delta_encoded_keys_int = delta_decode_list(old_keys_int)
-        changes = dict(
-            zip(old_keys, map(str, delta_encoded_keys_int))
-        )  # map back to string
+        if decode_positions:
+            # Decode the positions
+            for doc_id, positions in record.items():
+                inverted_index.index[term][doc_id] = delta_decode_list(positions)
 
-        # Apply changes to the keys
-        new_record = {}
-        for old_key, new_key in changes.items():
-            new_record[new_key] = record[old_key]
-        inverted_index.index[term] = new_record
+        if decode_term_doc_ids:
+            # Decode doc ids
+            old_keys = list(record.keys())
+            old_keys_int = list(map(int, old_keys))  # convert to int
+            delta_encoded_keys_int = delta_decode_list(old_keys_int)
+            changes = dict(
+                zip(old_keys, map(str, delta_encoded_keys_int))
+            )  # map back to string
+
+            # Apply changes to the keys
+            new_record = {}
+            for old_key, new_key in changes.items():
+                new_record[new_key] = record[old_key]
+            inverted_index.index[term] = new_record
 
 
 def build_child_index(
