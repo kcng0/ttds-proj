@@ -190,59 +190,60 @@ def delta_decode_list(delta_encoded):
     return positions
 
 
-# def save_delta_index_file(
-#     file_name: str,
-#     index: DefaultDict[str, Dict[str, list]],
-#     output_dir: str = "binary_file",
-# ):
-#     if not os.path.exists(os.path.join(CURRENT_DIR, output_dir)):
-#         os.mkdir(os.path.join(CURRENT_DIR, output_dir))
-#     index_output = dict(sorted(index.items()))
-#     with open(os.path.join(CURRENT_DIR, output_dir, file_name), "wb") as f:
-#         for term, record in index_output.items():
-#             if term == "document_size" or term == "doc_ids_list":
-#                 continue
-#             record = dict(sorted(record.items(), key=lambda x: int(x[0])))
-#             f.write(f"{term} {len(record)}\n".encode("utf8"))
-#             for doc_id, positions in record.items():
-#                 # Apply delta encoding here
-#                 delta_positions = delta_encode_positions(positions)
-#                 # Convert delta-encoded positions back to strings for storage
-#                 positions_str = ",".join(str(pos) for pos in delta_positions)
-#                 f.write(f"\t{doc_id}: {positions_str}\n".encode("utf8"))
+def encode_index(inverted_index: InvertedIndex):
+    """Delta-encode postings list, doc_ids for each term and positions."""
+    # Delta encode postings list
+    inverted_index.meta.doc_ids_list = delta_encode_list(
+        inverted_index.meta.doc_ids_list
+    )
 
+    # Delta encode the doc_ids and the positions
+    for term, record in inverted_index.index.items():
+        # Delta encode doc ids
+        old_keys = list(record.keys())
+        old_keys_int = list(map(int, old_keys))  # convert to int
+        delta_encoded_keys_int = delta_encode_list(old_keys_int)
+        changes = dict(
+            zip(old_keys, map(str, delta_encoded_keys_int))
+        )  # map back to string
 
-# def decode_positions(data):
-#     """Recursively decode delta-encoded position lists in the index data."""
-#     if isinstance(data, dict):
-#         return {key: decode_positions(value) for key, value in data.items()}
-#     elif isinstance(data, list) and all(isinstance(x, int) for x in data):
-#         # Assuming the list is of integers, decode it if it's delta-encoded
-#         return delta_decode_positions(data)
-#     else:
-#         return data
+        # Apply changes to the keys
+        new_record = {}  # Temporary dictionary to store updated records
+        for old_key, new_key in changes.items():
+            new_record[new_key] = record[old_key]  # Move item to new key in new_record
+        inverted_index.index[term] = new_record
 
-
-def encode_index(index: DefaultDict[str, Dict[str, list]]):
-    for term, record in index.items():
+        # Delta encode the positions
         for doc_id, positions in record.items():
-            index[term][doc_id] = delta_encode_list(positions)
+            inverted_index.index[term][doc_id] = delta_encode_list(positions)
 
 
-def decode_index(index: DefaultDict[str, Dict[str, list]]):
-    for term, record in index.items():
+def decode_index(inverted_index: InvertedIndex):
+    """Delta-decode postings list, doc_ids for each term and positions."""
+    # Decode postings list
+    inverted_index.meta.doc_ids_list = delta_decode_list(
+        inverted_index.meta.doc_ids_list
+    )
+    # Decode the doc_ids and the positions
+    for term, record in inverted_index.index.items():
+        # Decode doc ids
+        old_keys = list(record.keys())
+        old_keys_int = list(map(int, old_keys))  # convert to int
+        delta_encoded_keys_int = delta_decode_list(old_keys_int)
+        changes = dict(
+            zip(old_keys, map(str, delta_encoded_keys_int))
+        )  # map back to string
+
+        # Apply changes to the keys
+        new_record = {}
+        for old_key, new_key in changes.items():
+            new_record[new_key] = record[old_key]
+        inverted_index.index[term] = new_record
+
+        # Decode the positions
         for doc_id, positions in record.items():
-            index[term][doc_id] = delta_decode_list(positions)
 
-
-# def load_delta_encoded_index(file_name: str, output_dir: str = "binary_file") -> dict:
-#     path = os.path.join(CURRENT_DIR, output_dir, file_name)
-#     with open(path, "rb") as f:
-#         data = orjson.loads(f.read().decode("utf8"))
-
-#     # Apply delta decoding to the loaded data
-#     index = decode_positions(data)
-#     return index
+            inverted_index.index[term][doc_id] = delta_decode_list(positions)
 
 
 def build_child_index(
@@ -281,7 +282,7 @@ def build_child_index(
             source, date, indices_batch[0], indices_batch[-1]
         )
         inverted_index = positional_inverted_index(news_batch)
-        encode_index(inverted_index.index)
+        encode_index(inverted_index)
         save_json_file(
             f"{source.value}_{date}_{indices_batch[0]}_{indices_batch[-1]}.json",
             inverted_index.model_dump(),
