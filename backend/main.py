@@ -14,7 +14,8 @@ app = FastAPI(dependencies=[])
 
 # change the port if you want (react app)
 origins = [
-    "http://localhost:8080",
+    "https://ttds18-67d62zc6ua-ew.a.run.app/",
+    # "http://127.0.0.1:8080",
     "http://localhost:3000",
     "localhost:3000",
 ]
