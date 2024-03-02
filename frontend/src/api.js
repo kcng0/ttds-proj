@@ -1,5 +1,5 @@
 
-const BASE_URL = 'http://127.0.0.1:8000'; // Update with your backend URL
+const BASE_URL = 'http://localhost:8080'; // Update with your backend URL
 
 export const fetchSearchResults = async (query, year, page = 1, limit = 10) => {
     // Remove empty parameters from the request
