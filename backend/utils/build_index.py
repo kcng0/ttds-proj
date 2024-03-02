@@ -6,14 +6,29 @@ import time
 import threading
 from collections import defaultdict
 from typing import DefaultDict, Dict, List
-from common import read_binary_file, get_preprocessed_words, load_batch_from_news_source, save_json_file, load_json_file, get_indices_for_news_data
-from basetype import InvertedIndex, InvertedIndexMetadata, NewsArticleData, NewsArticlesFragment, NewsArticlesBatch, default_dict_list
+from common import (
+    read_binary_file,
+    get_preprocessed_words,
+    load_batch_from_news_source,
+    save_json_file,
+    load_json_file,
+    get_indices_for_news_data,
+)
+from basetype import (
+    InvertedIndex,
+    InvertedIndexMetadata,
+    NewsArticleData,
+    NewsArticlesFragment,
+    NewsArticlesBatch,
+    default_dict_list,
+)
 from constant import Source, CHILD_INDEX_PATH, GLOBAL_INDEX_PATH
 from datetime import date
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 CURRENT_DIR = os.getcwd()
 NUM_OF_CORES = os.cpu_count() or 1
+
 
 def process_batch(
     fragment_list: List[NewsArticlesFragment],
@@ -49,12 +64,11 @@ def positional_inverted_index(
     doc_ids = news_batch.doc_ids
     document_size = len(doc_ids)
     inverted_index_meta = InvertedIndexMetadata(
-        document_size=document_size,
-        doc_ids_list=doc_ids)
+        document_size=document_size, doc_ids_list=doc_ids
+    )
 
     inverted_index = InvertedIndex(
-        meta=inverted_index_meta,
-        index=defaultdict(default_dict_list)
+        meta=inverted_index_meta, index=defaultdict(default_dict_list)
     )
 
     # cut the fragments into batches
@@ -63,13 +77,20 @@ def positional_inverted_index(
         batch_size = len(fragments) // NUM_OF_CORES
         remainder = len(fragments) % NUM_OF_CORES
         batches = [
-            fragments[i * batch_size: (i + 1) * batch_size] for i in range(NUM_OF_CORES)]
+            fragments[i * batch_size : (i + 1) * batch_size]
+            for i in range(NUM_OF_CORES)
+        ]
         if remainder != 0:
             # append the remainder to the last batch
             batches[-1] += fragments[-remainder:]
 
         with ThreadPoolExecutor(max_workers=NUM_OF_CORES) as executor:
-            futures = [executor.submit(process_batch, batch, inverted_index, stopping, stemming) for batch in batches]
+            futures = [
+                executor.submit(
+                    process_batch, batch, inverted_index, stopping, stemming
+                )
+                for batch in batches
+            ]
 
         for future in futures:
             try:
@@ -79,14 +100,18 @@ def positional_inverted_index(
                 traceback.print_exc()
                 exit()
 
-        print(f"Time taken for processing {source}: {time.time() - curr_time:.2f} seconds")
+        print(
+            f"Time taken for processing {source}: {time.time() - curr_time:.2f} seconds"
+        )
 
     return inverted_index
 
 
 # save as binary file
 def save_index_file(
-    file_name: str, index: DefaultDict[str, Dict[str, list]], output_dir: str = "binary_file"
+    file_name: str,
+    index: DefaultDict[str, Dict[str, list]],
+    output_dir: str = "binary_file",
 ):
     if not os.path.exists(os.path.join(CURRENT_DIR, output_dir)):
         os.mkdir(os.path.join(CURRENT_DIR, output_dir))
@@ -95,8 +120,7 @@ def save_index_file(
     for term, record in index_output.items():
         if term == "document_size" or term == "doc_ids_list":
             continue
-        index_output[term] = dict(
-            sorted(record.items(), key=lambda x: int(x[0])))
+        index_output[term] = dict(sorted(record.items(), key=lambda x: int(x[0])))
 
     with open(os.path.join(CURRENT_DIR, output_dir, file_name), "wb") as f:
         for term, record in index_output.items():
@@ -116,8 +140,12 @@ def load_binary_index(file_name: str, output_dir: str = "binary_file") -> dict:
         data = f.read().decode("utf8")
     return orjson.loads(data)
 
-def merge_inverted_indices(global_index: DefaultDict[str, DefaultDict[str, List[int]]], child_index: DefaultDict[str, DefaultDict[str, List[int]]]):
-    
+
+def merge_inverted_indices(
+    global_index: DefaultDict[str, DefaultDict[str, List[int]]],
+    child_index: DefaultDict[str, DefaultDict[str, List[int]]],
+):
+
     if not global_index:
         global_index.update(child_index)
         return
@@ -130,13 +158,18 @@ def merge_inverted_indices(global_index: DefaultDict[str, DefaultDict[str, List[
     # the docID must be new!
     for key in new_keys:
         global_index[key] = child_index[key]
-    
+
     for key in common_keys:
         for doc_id in child_index[key]:
             if doc_id not in global_index[key]:
                 global_index[key][doc_id] = child_index[key][doc_id]
             elif doc_id in global_index[key]:
-                print("WARNING: Trying to add new documents under the same doc ID!", key, doc_id)
+                print(
+                    "WARNING: Trying to add new documents under the same doc ID!",
+                    key,
+                    doc_id,
+                )
+
 
 def delta_encode_list(positions):
     """Convert a list of positions into a delta-encoded list."""
@@ -237,15 +270,17 @@ def build_child_index(
     source: Source,
     date: date,
     interval=10,
-):  
+):
     # file name format: {source_name}_{YYYY-MM-DD}_{start_number}_{end_number}.json
     time_str = date.strftime("%Y-%m-%d")
     pattern = re.compile(f"{source.value}_{time_str}_([0-9]+)_([0-9]+).json")
     last_index = -1
-    
+
     if os.path.exists(CHILD_INDEX_PATH):
-        child_index_file_list = [file for file in os.listdir(CHILD_INDEX_PATH) if pattern.match(file)]
-        
+        child_index_file_list = [
+            file for file in os.listdir(CHILD_INDEX_PATH) if pattern.match(file)
+        ]
+
         for file in child_index_file_list:
             # split by .csv
             file_name = file.split(".")[0]
@@ -253,20 +288,29 @@ def build_child_index(
             file_info = file_name.split("_")
             if int(file_info[-1]) > last_index:
                 last_index = int(file_info[-1])
-    
+
     indices = get_indices_for_news_data(source.value, date)
-    
+
     # prune the indices
     indices = [index for index in indices if index > last_index]
-        
+
     # divide the indices into intervals
-    indices_batches = [ indices[i:i+interval] for i in range(0, len(indices), interval) ]
+    indices_batches = [
+        indices[i : i + interval] for i in range(0, len(indices), interval)
+    ]
     for indices_batch in indices_batches:
-        news_batch = load_batch_from_news_source(source, date, indices_batch[0], indices_batch[-1])
+        news_batch = load_batch_from_news_source(
+            source, date, indices_batch[0], indices_batch[-1]
+        )
         inverted_index = positional_inverted_index(news_batch)
         encode_index(inverted_index)
-        save_json_file(f"{source.value}_{date}_{indices_batch[0]}_{indices_batch[-1]}.json", inverted_index.model_dump(), "index/child")
-        
+        save_json_file(
+            f"{source.value}_{date}_{indices_batch[0]}_{indices_batch[-1]}.json",
+            inverted_index.model_dump(),
+            "index/child",
+        )
+
+
 # # this one is failed
 # def build_global_index(child_index_path: str, global_index_path: str):
 #     start_time = time.time()
@@ -280,9 +324,9 @@ def build_child_index(
 #         doc_ids_list.extend(child_index.meta.doc_ids_list)
 #         merge_inverted_indices(index, child_index.index)
 #         print(f"Processed {file}")
-    
+
 #     print(f"Finsihed processing {len(child_index_file_list)} child index files")
-    
+
 #     inverted_index_meta = InvertedIndexMetadata(
 #         document_size=document_size,
 #         doc_ids_list=doc_ids_list)
@@ -290,10 +334,9 @@ def build_child_index(
 #         meta=inverted_index_meta,
 #         index=index
 #     )
-    
+
 #     save_json_file("global_index.json", inverted_index.model_dump(), global_index_path)
 #     print(f"Time taken for building global index: {time.time() - start_time:.2f} seconds")
-
 
 
 if __name__ == "__main__":
@@ -301,9 +344,8 @@ if __name__ == "__main__":
         (Source.BBC, date(2024, 2, 17)),
         (Source.IND, date(2024, 2, 18)),
         (Source.GBN, date(2024, 2, 18)),
-        (Source.TELE, date(2024, 2, 16))
+        (Source.TELE, date(2024, 2, 16)),
     ]
-    
+
     with ProcessPoolExecutor(max_workers=4) as executor:
         executor.map(build_child_index, *zip(*tasks))
-    

@@ -1,18 +1,40 @@
-import React from 'react';
-import ResultsPage from './ResultsPage';
-import HowItWorks from './HowItWorks';
-import logoImage from './logo.png'; // Ensure this is the correct path
+import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { Container, InputGroup, FormControl, Button, Navbar, Nav } from 'react-bootstrap';
 import { BsSearch } from 'react-icons/bs';
-import { useNavigate, BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import StandardResultsPage from './StandardResultsPage'; 
+import BooleanResultsPage from './BooleanResultsPage';
+import TfidfResultsPage from './TfidfResultsPage';
+import HowItWorks from './HowItWorks';
+import { fetchSearchResults, fetchSearchBoolean, fetchSearchTfidf } from './api';
+import logoImage from './logo.png';
 
 function App() {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [searchType, setSearchType] = useState('standard'); // 'standard' or 'boolean'
     let navigate = useNavigate();
 
-    const handleSearchClick = () => {
-        navigate('/ResultsPage');
-    };
+    const handleSearchClick = async () => {
+        if (!searchQuery.trim()) return;
+      
+        try {
+          let results;
+          if (searchType === 'standard') {
+            results = await fetchSearchResults(searchQuery.trim());
+            navigate('/StandardResultsPage', { state: { searchResults: results, searchType: 'standard' } });
+          } else if (searchType === 'boolean') {
+            results = await fetchSearchBoolean(searchQuery.trim());
+            navigate('/BooleanResultsPage', { state: { searchResults: results, searchType: 'boolean' } });
+          } else if (searchType === 'tfidf') { // Handle TF-IDF search
+            results = await fetchSearchTfidf(searchQuery.trim());
+            navigate('/TfidfResultsPage', { state: { searchResults: results, searchType: 'tfidf' } });
+          }
+        } catch (error) {
+          console.error(`Error fetching ${searchType} search results:`, error);
+        }
+      };
+      
 
     return (
         <>
@@ -29,28 +51,31 @@ function App() {
                 </Container>
             </Navbar>
 
-
-            <Container className="d-flex flex-column justify-content-center align-items-center" style={{ minHeight: '80vh', backgroundColor: '#ffffff', paddingTop: '5vh' }}>
-                <div className="text-center" style={{ position: 'relative', top: '-15vh' }}>
+            <Container className="d-flex flex-column justify-content-center align-items-center" style={{ minHeight: '80vh' }}>
+                <div className="text-center">
                     <img 
                         src={logoImage} 
-                        alt="FactChecker Logo"
-                        className="mb-2"
-                        style={{ maxWidth: '350px', width: '100%' }}
+                        alt="FactChecker Logo" 
+                        style={{ maxWidth: '350px', width: '100%', marginBottom: '20px' }}
                     />
-                    <InputGroup className="mb-3" style={{ maxWidth: '2000px', width: '100%' }}>
+                    <InputGroup className="mb-3">
                         <FormControl
-                          placeholder="Search"
-                          aria-label="Search"
-                          aria-describedby="basic-addon2"
-                          style={{ borderRadius: '20px 0 0 20px', height: '50px' }}
+                            placeholder="Search"
+                            aria-label="Search"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                         />
-                        <Button 
-                          variant="outline-secondary" 
-                          id="button-addon2" 
-                          style={{ borderRadius: '0 20px 20px 0', height: '50px' }}
-                          onClick={handleSearchClick}
+                        <select
+                            className="form-select"
+                            value={searchType}
+                            onChange={(e) => setSearchType(e.target.value)}
+                            style={{ maxWidth: '120px' }}
                         >
+                            <option value="standard">Standard</option>
+                            <option value="boolean">Boolean</option>
+                            <option value="tfidf">TF-IDF</option>
+                        </select>
+                        <Button variant="outline-secondary" onClick={handleSearchClick}>
                             <BsSearch />
                         </Button>
                     </InputGroup>
@@ -80,9 +105,12 @@ function AppWrapper() {
         <BrowserRouter>
             <Routes>
                 <Route path="/" element={<App />} />
-                <Route path="/ResultsPage" element={<ResultsPage />} />
+                <Route path="/StandardResultsPage" element={<StandardResultsPage />} />
+                <Route path="/BooleanResultsPage" element={<BooleanResultsPage />} />
+                <Route path="/TfidfResultsPage" element={<TfidfResultsPage />} /> {/* Add this line */}
                 <Route path="/how-it-works" element={<HowItWorks />} />
             </Routes>
+
         </BrowserRouter>
     );
 }
