@@ -105,6 +105,8 @@ class RedisKeys:
     """list of document IDs (list[int])"""
     index = lambda term: f"w:{term}"
     """index for a term Dict[doc_id, List[int]]"""
+    urls = "meta:urls"
+    """urls to store the existing url (string)"""
     idf = lambda term: f"idf:{term}"
     """idf value for a term (float)"""
     document = lambda doc_id: f"doc:{doc_id}"
@@ -122,6 +124,7 @@ class RedisDocKeys:
     sentiment = "sentiment"
     summary = "summary"
     source = "source"
+    topic = "topic"
 
 
 if __name__ == "__main__":

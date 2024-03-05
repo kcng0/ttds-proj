@@ -18,7 +18,6 @@ redis_async_connection = {
     2: None, # for cache
 }
 
-
 redis_connection = None 
 redis_config = None
 
@@ -45,16 +44,16 @@ def get_redis_config(env="prod", is_async=True, db=0):
     return config_redis
 
 # Redis Functions
-def initialize_sync_redis():
+def initialize_sync_redis(db=0):
     global redis_connection
     try:
         if not redis_connection:
-            config_redis = get_redis_config(is_async=False)
+            config_redis = get_redis_config(is_async=False, db=db)
             redis_connection = redis.StrictRedis(**config_redis)
         else:
             redis_connection.ping()
     except (redis.ConnectionError, redis.RedisError, Exception):
-        config_redis = get_redis_config(is_async=False)
+        config_redis = get_redis_config(is_async=False, db=db)
         redis_connection = redis.StrictRedis(**config_redis)
 
 async def initialize_async_redis(db=0):
@@ -70,11 +69,13 @@ async def initialize_async_redis(db=0):
         redis_async_connection[db] = await aioredis.create_redis_pool(**config_redis)
 
 # decorator to check if the redis connection is initialized
-def check_redis_connection(func):
-    def wrapper(*args, **kwargs):
-        initialize_sync_redis()
-        return func(*args, **kwargs)
-    return wrapper
+def do_check_redis_connection(db=0):
+    def check_redis_connection(func):
+        def wrapper(*args, **kwargs):
+            initialize_sync_redis(db=db)
+            return func(*args, **kwargs)
+        return wrapper
+    return check_redis_connection
 
 # decorator to check if the async redis connection is initialized
 def do_check_async_redis_connection(db=0):
@@ -85,7 +86,7 @@ def do_check_async_redis_connection(db=0):
         return wrapper
     return check_async_redis_connection
 
-@check_redis_connection
+@do_check_redis_connection(db=0)
 def update_doc_size(new_size, colname="meta:document_size"):
     doc_size = redis_connection.get(colname)
 
@@ -101,7 +102,27 @@ def update_doc_size(new_size, colname="meta:document_size"):
 @do_check_async_redis_connection(db=0)
 async def get_doc_size() -> int:
     doc_size = await redis_async_connection[0].get(RedisKeys.document_size)
-    return int(doc_size)
+    if doc_size:
+        return int(doc_size)
+    else:
+        return 0
+@do_check_async_redis_connection(db=1)
+async def check_url_exist(url_) -> int:
+    is_exist = await redis_async_connection[1].sismember(RedisKeys.urls, url_)
+    return bool(is_exist)
+
+@do_check_redis_connection(db=1)
+def check_batch_urls_exist(urls) -> int:
+    # Create a pipeline
+    pipe = redis_connection.pipeline()
+
+    # Add sismember commands for each value to the pipeline
+    for url_ in urls:
+        pipe.sismember(RedisKeys.urls, url_)
+
+    results = pipe.execute()
+
+    return results
 
 @do_check_async_redis_connection(db=1)
 async def get_doc_fields(doc_id: int, fields_list: List[str]) -> List[str]:
@@ -143,7 +164,7 @@ async def get_doc_ids_list() -> List[int]:
     doc_ids_list = await redis_async_connection[0].get(RedisKeys.doc_ids_list)
     return orjson.loads(doc_ids_list)
 
-@check_redis_connection
+@do_check_redis_connection(db=0)
 def get_val(key):
     start_time = time.time()
     value = redis_connection.get(key)
@@ -169,13 +190,15 @@ async def batch_push(batches):
 @do_check_async_redis_connection(db=1)
 async def set_news_data(article: NewsArticleData):
     # Get metadata
+    # TODO: Update the sentiment and summary
     doc_title = article.title
     doc_url = article.url
     doc_id = RedisKeys.document(article.doc_id)
     doc_date = article.date
-    doc_sentiment = 'positive'
+    doc_sentiment = 'neutral'
     doc_summary = ".".join(article.content.split('.')[:3])
     doc_source = article.url.split('.')[1]
+    doc_topic = "-".join(article.url.split("/")[3:-1][:2])
 
     # Set the values
     lua_script = f"""
@@ -185,9 +208,11 @@ async def set_news_data(article: NewsArticleData):
         redis.call('hset', ARGV[1], '{RedisDocKeys.sentiment}', ARGV[5])
         redis.call('hset', ARGV[1], '{RedisDocKeys.summary}', ARGV[6])
         redis.call('hset', ARGV[1], '{RedisDocKeys.source}', ARGV[7])
+        redis.call('hset', ARGV[1], '{RedisDocKeys.topic}', ARGV[8])
+        redis.call('sadd', '{RedisKeys.urls}', ARGV[2])
     """
     # Run the Lua script
-    await redis_async_connection[0].eval(
+    await redis_async_connection[1].eval(
         lua_script, 
         keys=[], 
         args=[
@@ -197,9 +222,14 @@ async def set_news_data(article: NewsArticleData):
             doc_date, #4
             doc_sentiment, #5
             doc_summary, #6
-            doc_source
+            doc_source, #7
+            doc_topic #8
             ]
         )
+    
+@do_check_async_redis_connection(db=1)
+async def set_news_data_col(doc_id: str, colname: RedisDocKeys, value: str):
+    await redis_async_connection[1].hset(doc_id, colname, value)
 
 @do_check_async_redis_connection(db=1)
 async def batch_push_news_data(news_batch):
@@ -220,8 +250,8 @@ async def update_index(inverted_index: InvertedIndex):
         tasks.append(update_index_term(term, inverted_index))
     await asyncio.gather(*tasks)
     
-    doc_size = await redis_async_connection[0].get("meta:document_size")
-    doc_ids_list = await redis_async_connection[0].get("meta:doc_ids_list")
+    doc_size = await redis_async_connection[0].get(RedisKeys.document_size) 
+    doc_ids_list = await redis_async_connection[0].get(RedisKeys.doc_ids_list) 
     if not doc_size:
         doc_size = inverted_index.meta.document_size
     else:
@@ -234,13 +264,13 @@ async def update_index(inverted_index: InvertedIndex):
         doc_ids_list = orjson.loads(doc_ids_list)
         doc_ids_list.extend(inverted_index.meta.doc_ids_list)
     
-    await redis_async_connection.mset({
-        "meta:document_size": doc_size,
-        "meta:doc_ids_list": orjson.dumps(doc_ids_list)
+    await redis_async_connection[0].mset({
+        RedisKeys.document_size: doc_size,
+        RedisKeys.doc_ids_list: orjson.dumps(doc_ids_list)
     })
             
 async def update_index_term(term, inverted_index: InvertedIndex):
-    db_value = await redis_async_connection[0].get(term)
+    db_value = await redis_async_connection[0].get(RedisKeys.index(term))
     if not db_value:
         db_value = {}
     else:
@@ -249,7 +279,7 @@ async def update_index_term(term, inverted_index: InvertedIndex):
     for doc_id, pos in inverted_index.index[term].items():
         db_value[doc_id] = pos
     
-    await redis_async_connection[0].set(f"w:{term}", orjson.dumps(db_value))
+    await redis_async_connection[0].set(RedisKeys.index(term), orjson.dumps(db_value))
     
 @do_check_async_redis_connection(db=0)
 async def get_json_value(key: str) -> Dict:
@@ -267,7 +297,7 @@ async def get_idf_value(key: str) -> float:
     value = await redis_async_connection[0].get(key)
     return float(value)
 
-@check_redis_connection
+@do_check_redis_connection(db=0)
 def clear_redis():
     redis_connection.flushall()
     return True
