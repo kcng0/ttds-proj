@@ -131,7 +131,8 @@ async def tfidf_search(
                                                 RedisDocKeys.source, 
                                                 RedisDocKeys.date, 
                                                 RedisDocKeys.sentiment, 
-                                                RedisDocKeys.summary])
+                                                RedisDocKeys.summary,
+                                                RedisDocKeys.topic])
         results[idx] = [{"score": t[1], **doc_info_list[i]} for i, t in enumerate(result)]
         
     if not results or len(results) > page*limit:
