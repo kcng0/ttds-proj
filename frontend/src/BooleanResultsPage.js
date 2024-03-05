@@ -86,7 +86,7 @@ function BooleanResultsPage() {
                                         {result.sentiment.charAt(0).toUpperCase() + result.sentiment.slice(1)}
                                     </Badge>
                                     <Badge bg="dark" className="me-2">
-                                            {result.sentiment.charAt(0).toUpperCase() + result.sentiment.slice(1)}
+                                            {result.topic}
                                         </Badge>
                                     <Card.Text>
                                         <strong>Date:</strong> {result.date}<br />
