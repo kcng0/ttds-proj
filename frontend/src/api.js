@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-
-// const BASE_URL = 'http://127.0.0.1:8080'; // Update with your backend URL
-const BASE_URL = 'https://ttds18-67d62zc6ua-ew.a.run.app'; // Update with your backend URL
+//const BASE_URL = 'https://ttds18-67d62zc6ua-ew.a.run.app'; // Update with your backend URL
+// Import axios or a similar HTTP client if not already imported
+const BASE_URL = 'http://127.0.0.1:8000'; // Update with your backend URL
 
 export const fetchSearchResults = async (query, year, page = 1, limit = 10) => {
     // Remove empty parameters from the request
@@ -29,16 +29,20 @@ export const fetchSearchResults = async (query, year, page = 1, limit = 10) => {
 
 
 // Function to call the query expansion endpoint
-export const fetchQueryExpansions = async () => {
+export const fetchQueryExpansions = async (query, numExpansions = 3) => {
   try {
-    //add the url of the query expansion endpoint in response
-    const response = await axios.get('https://mocki.io/v1/6268f71b-9089-407b-8d25-be897fd39877');
-    return response.data.results; 
+    const response = await axios.post(`${BASE_URL}/search/expand-query/`, {
+      query: query,
+      num_expansions: numExpansions,
+    });
+    return response.data.expanded_queries; 
   } catch (error) {
     console.error('Error fetching query expansions:', error);
     return [];
   }
 };
+
+
 
 
 export const postSearchTest = async (data) => {
@@ -91,7 +95,7 @@ export const fetchSearchTfidf = async (query, page = 1, limit = 10) => {
         throw new Error(`Network response was not ok (status: ${response.status})`);
       }
       const data = await response.json();
-      return data.results; // adjust this depending on the shape of your API response.
+      return data.results; // adjust this depending on the shape of the API response.
     } catch (error) {
       console.error('There was a problem fetching the TF-IDF search results:', error);
       throw error; // Re-throw the error so it can be caught and handled by the caller.

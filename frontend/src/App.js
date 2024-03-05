@@ -20,15 +20,14 @@ function App() {
       
         try {
           let results;
-          console.log("SearchType:");
-          console.log(searchType);
           if (searchType === 'standard') {
             results = await fetchSearchResults(searchQuery.trim());
             navigate('/StandardResultsPage', { state: { searchResults: results, searchType: 'standard' } });
-        } else if (searchType === 'boolean') {
+          } else if (searchType === 'boolean') {
             results = await fetchSearchBoolean(searchQuery.trim());
-            navigate('/BooleanResultsPage', { state: { searchResults: results, searchType: 'boolean' } });
-        } else if (searchType === 'tfidf') { // Handle TF-IDF search
+            // Include the search query as a URL parameter
+            navigate(`/BooleanResultsPage?q=${encodeURIComponent(searchQuery.trim())}`, { state: { searchResults: results, searchType: 'boolean' } });
+          } else if (searchType === 'tfidf') { // Handle TF-IDF search
             results = await fetchSearchTfidf(searchQuery.trim());
             navigate('/TfidfResultsPage', { state: { searchResults: results, searchType: 'tfidf' } });
           }

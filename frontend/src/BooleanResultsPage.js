@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { fetchSearchBoolean } from './api'; 
 import { Container, Navbar, Nav, InputGroup, FormControl, Button, Card, Pagination, Badge } from 'react-bootstrap';
 import { BsSearch } from 'react-icons/bs';
@@ -11,6 +11,18 @@ function BooleanResultsPage() {
     const { searchResults } = useLocation().state || { searchResults: [] }; // Default to empty array if no state
     let navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
+    const location = useLocation();
+    
+    useEffect(() => {
+        //console.log("Location search:", location.search);
+        const searchParams = new URLSearchParams(location.search);
+        //console.log("searchParams:", searchParams);
+        const query = searchParams.get('q');
+        if (query) {
+            setSearchQuery(query);
+            performSearch(query);
+        }
+    }, [location.search]);
 
     const performSearch = async (searchTerm) => {
         try {
@@ -47,7 +59,7 @@ function BooleanResultsPage() {
     };
 
     const handleQueryExpansionSelect = (newQuery) => {
-        console.log("Selected expanded query:", newQuery);
+        //console.log("Selected expanded query:", newQuery);
         setSearchQuery(newQuery);
         performSearch(newQuery);
       };
@@ -67,7 +79,8 @@ function BooleanResultsPage() {
                 </Container>
             </Navbar>
             
-            <QueryExpansion onQuerySelect={handleQueryExpansionSelect} />
+            <QueryExpansion onQuerySelect={handleQueryExpansionSelect} currentQuery={searchQuery} />
+
 
             <Container>
                 <InputGroup className="mb-4 mt-3">
@@ -94,9 +107,6 @@ function BooleanResultsPage() {
                                     <Badge bg={getSentimentBadgeVariant(result.sentiment)} className="me-2">
                                         {result.sentiment.charAt(0).toUpperCase() + result.sentiment.slice(1)}
                                     </Badge>
-                                    <Badge bg="dark" className="me-2">
-                                            {result.sentiment.charAt(0).toUpperCase() + result.sentiment.slice(1)}
-                                        </Badge>
                                     <Card.Text>
                                         <strong>Date:</strong> {result.date}<br />
                                         <strong>Summary:</strong> {result.summary}
