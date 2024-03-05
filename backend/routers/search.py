@@ -8,6 +8,7 @@ from utils.basetype import Result
 from utils.query_engine import boolean_test, ranked_test
 from utils.redis_utils import caching_query_result, get_cache, get_docs_fields, check_cache_exists
 from utils.basetype import RedisKeys, RedisDocKeys
+from ai.QE_Bert import expand_query
 from math import ceil
 
 router = APIRouter(
@@ -131,8 +132,7 @@ async def tfidf_search(
                                                 RedisDocKeys.source, 
                                                 RedisDocKeys.date, 
                                                 RedisDocKeys.sentiment, 
-                                                RedisDocKeys.summary,
-                                                RedisDocKeys.topic])
+                                                RedisDocKeys.summary])
         results[idx] = [{"score": t[1], **doc_info_list[i]} for i, t in enumerate(result)]
         
     if not results or len(results) > page*limit:
@@ -143,3 +143,13 @@ async def tfidf_search(
     await caching_query_result("tfidf", q, results)
     
     return ORJSONResponse(content=response)
+
+class ExpansionQuery(BaseModel):  
+    query: str
+    num_expansions: int = 10  # Default value set to 10
+
+@router.post("/expand-query/")
+async def expand_query_api(query_data: ExpansionQuery):
+    
+    expanded_query = expand_query(query_data.query, query_data.num_expansions)
+    return ORJSONResponse(content={"expanded_queries": expanded_query})
