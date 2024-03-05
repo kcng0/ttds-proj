@@ -16,7 +16,7 @@ import numpy as np
 # pre-trained BERT model for generating embeddings
 model_name = "bert-base-nli-mean-tokens"
 model = SentenceTransformer(model_name)
-data = pd.read_csv(os.path.join(os.path.dirname(__file__), '..', 'doc_sum', 'article100.csv'))
+data = pd.read_csv('/Users/anantraj/Desktop/ttds-proj/backend/ai/article100.csv') #add file path here
 
 
 preprocessed_data_path = "preprocessed_data.pkl"
@@ -65,8 +65,8 @@ def expand_query(query, num_expansions=10):
     return expanded_query
 
 #Test
-user_query = "Trump and Taxes"
-expanded_query = expand_query(user_query)
-print("User Query:", user_query)
-for item in expanded_query:
-    print('Expanded Query:', item)
+# user_query = "Trump and Taxes"
+# expanded_query = expand_query(user_query)
+# print("User Query:", user_query)
+# for item in expanded_query:
+#     print('Expanded Query:', item)
