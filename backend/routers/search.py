@@ -86,7 +86,8 @@ async def boolean_search(
                                               RedisDocKeys.source, 
                                               RedisDocKeys.date, 
                                               RedisDocKeys.sentiment, 
-                                              RedisDocKeys.summary])
+                                              RedisDocKeys.summary,
+                                              RedisDocKeys.topic])
 
     response = pagination(results)
     await caching_query_result("boolean", q, results)

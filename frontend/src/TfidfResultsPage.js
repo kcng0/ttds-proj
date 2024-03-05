@@ -95,7 +95,7 @@ function TfidfResultsPage() {
                                             {result.sentiment.charAt(0).toUpperCase() + result.sentiment.slice(1)}
                                         </Badge>
                                         <Badge bg="dark" className="me-2">
-                                            {result.sentiment.charAt(0).toUpperCase() + result.sentiment.slice(1)}
+                                            {result.topic}
                                         </Badge>
                                         <Card.Text>
                                             <strong>Score:</strong> {result.score}<br />
