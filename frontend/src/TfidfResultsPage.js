@@ -49,6 +49,7 @@ function TfidfResultsPage() {
         }
     };
 
+
     // Rest of the component remains the same
     const { searchResults } = location.state;
 
@@ -91,6 +92,9 @@ function TfidfResultsPage() {
                                     <Card.Body>
                                         <Card.Title>{result.title}</Card.Title>
                                         <Badge bg={getSentimentBadgeVariant(result.sentiment)} className="me-2">
+                                            {result.sentiment.charAt(0).toUpperCase() + result.sentiment.slice(1)}
+                                        </Badge>
+                                        <Badge bg="dark" className="me-2">
                                             {result.sentiment.charAt(0).toUpperCase() + result.sentiment.slice(1)}
                                         </Badge>
                                         <Card.Text>

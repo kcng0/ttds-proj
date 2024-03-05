@@ -85,6 +85,9 @@ function BooleanResultsPage() {
                                     <Badge bg={getSentimentBadgeVariant(result.sentiment)} className="me-2">
                                         {result.sentiment.charAt(0).toUpperCase() + result.sentiment.slice(1)}
                                     </Badge>
+                                    <Badge bg="dark" className="me-2">
+                                            {result.sentiment.charAt(0).toUpperCase() + result.sentiment.slice(1)}
+                                        </Badge>
                                     <Card.Text>
                                         <strong>Date:</strong> {result.date}<br />
                                         <strong>Summary:</strong> {result.summary}
