@@ -11,7 +11,7 @@ function BooleanResultsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [elapsedTime, setElapsedTime] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const resultsPerPage = 3;
+    const resultsPerPage = 5;
 
     const performSearch = async (searchTerm) => {
         try {
