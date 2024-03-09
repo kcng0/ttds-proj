@@ -11,7 +11,7 @@ function TfidfResultsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchType, setSearchType] = useState('tfidf');
     const [currentPage, setCurrentPage] = useState(1);
-    const resultsPerPage = 3;
+    const resultsPerPage = 5;
 
     const handleSearchInputChange = (e) => {
         setSearchQuery(e.target.value);
