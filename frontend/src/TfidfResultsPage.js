@@ -9,7 +9,9 @@ function TfidfResultsPage() {
     const location = useLocation();
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchType, setSearchType] = useState('tfidf'); 
+    const [searchType, setSearchType] = useState('tfidf');
+    const [currentPage, setCurrentPage] = useState(1);
+    const resultsPerPage = 3;
 
     const handleSearchInputChange = (e) => {
         setSearchQuery(e.target.value);
@@ -27,12 +29,14 @@ function TfidfResultsPage() {
 
     const handleSearch = (e) => {
         if (e.key === 'Enter') {
-            e.preventDefault(); // Prevent form submission
+            e.preventDefault();
+            setCurrentPage(1); // Reset to the first page when initiating a new search
             performSearch(searchQuery);
         }
     };
 
     const handleSearchClick = () => {
+        setCurrentPage(1); // Reset to the first page when initiating a new search
         performSearch(searchQuery);
     };
 
@@ -49,10 +53,27 @@ function TfidfResultsPage() {
         }
     };
 
-
     // Rest of the component remains the same
     const { searchResults } = location.state;
 
+    const indexOfLastResult = currentPage * resultsPerPage;
+    const indexOfFirstResult = indexOfLastResult - resultsPerPage;
+    const currentResults = searchResults.slice(indexOfFirstResult, indexOfLastResult);
+
+    const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+    const renderPaginationItems = () => {
+        const pageNumbers = Math.ceil(searchResults.length / resultsPerPage);
+        const items = [];
+        for (let number = 1; number <= pageNumbers; number++) {
+            items.push(
+                <Pagination.Item key={number} active={number === currentPage} onClick={() => paginate(number)}>
+                    {number}
+                </Pagination.Item>
+            );
+        }
+        return items;
+    };
 
     return (
         <>
@@ -85,8 +106,8 @@ function TfidfResultsPage() {
 
                 <h2>{`${searchType.charAt(0).toUpperCase() + searchType.slice(1)} Search Results`}</h2>
                 <ul>
-                    {Array.isArray(searchResults) ? (
-                        searchResults.map((result, index) => (
+                    {Array.isArray(currentResults) && currentResults.length > 0 ? (
+                        currentResults.map((result, index) => (
                             <li key={index}>
                                 <Card>
                                     <Card.Body>
@@ -110,11 +131,7 @@ function TfidfResultsPage() {
                 </ul>
 
                 <Container className="d-flex justify-content-center mt-4">
-                    <Pagination>
-                        <Pagination.Item>{1}</Pagination.Item>
-                        <Pagination.Item>{2}</Pagination.Item>
-                        {/* Add more items as needed */}
-                    </Pagination>
+                    <Pagination>{renderPaginationItems()}</Pagination>
                 </Container>
             </Container>
         </>

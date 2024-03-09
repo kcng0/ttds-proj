@@ -1,20 +1,26 @@
 import React, { useState } from 'react';
-import { fetchSearchBoolean } from './api'; 
+import { fetchSearchBoolean } from './api';
 import { Container, Navbar, Nav, InputGroup, FormControl, Button, Card, Pagination, Badge } from 'react-bootstrap';
 import { BsSearch } from 'react-icons/bs';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import QueryExpansion from './queryExpansion'; // Adjust the path as necessary
-
 
 function BooleanResultsPage() {
-    const { searchResults } = useLocation().state || { searchResults: [] }; // Default to empty array if no state
+    const { searchResults } = useLocation().state || { searchResults: [] };
     let navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
+    const [elapsedTime, setElapsedTime] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const resultsPerPage = 3;
 
     const performSearch = async (searchTerm) => {
         try {
+            const startTime = performance.now();
             const results = await fetchSearchBoolean(searchTerm);
+            const endTime = performance.now();
+            const elapsed = endTime - startTime;
+            setElapsedTime(elapsed);
+
             navigate('/BooleanResultsPage', { state: { searchResults: results, searchType: 'boolean' } });
         } catch (error) {
             console.error('Error fetching boolean search results:', error);
@@ -24,33 +30,48 @@ function BooleanResultsPage() {
 
     const handleSearch = (e) => {
         if (e.key === 'Enter') {
-            e.preventDefault(); // Prevent the default form submission behavior
-            performSearch(searchQuery); // Perform the search with the current query
+            e.preventDefault();
+            setCurrentPage(1); // Reset to the first page when performing a new search
+            performSearch(searchQuery);
         }
     };
 
     const handleSearchClick = () => {
-        performSearch(searchQuery); // Perform the search when the button is clicked
+        setCurrentPage(1); // Reset to the first page when performing a new search
+        performSearch(searchQuery);
     };
 
     const getSentimentBadgeVariant = (sentiment) => {
         switch (sentiment) {
             case 'positive':
-                return 'success'; // Green
+                return 'success';
             case 'negative':
-                return 'danger'; // Red
+                return 'danger';
             case 'neutral':
-                return 'secondary'; // Grey
+                return 'secondary';
             default:
-                return 'dark'; // Default color
+                return 'dark';
         }
     };
 
-    const handleQueryExpansionSelect = (newQuery) => {
-        console.log("Selected expanded query:", newQuery);
-        setSearchQuery(newQuery);
-        performSearch(newQuery);
-      };
+    const indexOfLastResult = currentPage * resultsPerPage;
+    const indexOfFirstResult = indexOfLastResult - resultsPerPage;
+    const currentResults = searchResults.slice(indexOfFirstResult, indexOfLastResult);
+
+    const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+    const renderPaginationItems = () => {
+        const pageNumbers = Math.ceil(searchResults.length / resultsPerPage);
+        const items = [];
+        for (let number = 1; number <= pageNumbers; number++) {
+            items.push(
+                <Pagination.Item key={number} active={number === currentPage} onClick={() => paginate(number)}>
+                    {number}
+                </Pagination.Item>
+            );
+        }
+        return items;
+    };
 
     return (
         <>
@@ -66,8 +87,6 @@ function BooleanResultsPage() {
                     </Navbar.Collapse>
                 </Container>
             </Navbar>
-            
-            <QueryExpansion onQuerySelect={handleQueryExpansionSelect} />
 
             <Container>
                 <InputGroup className="mb-4 mt-3">
@@ -84,9 +103,13 @@ function BooleanResultsPage() {
                     </Button>
                 </InputGroup>
 
-                <h2>Boolean Search Results </h2>
+                <h2>Boolean Search Results</h2>
+                {//elapsedTime !== null && <p>Search took {elapsedTime.toFixed(2)} milliseconds.</p>
+                }
+                
+
                 <ul className="list-unstyled">
-                    {searchResults.map((result, index) => (
+                    {currentResults.map((result, index) => (
                         <li key={index} className="mb-3">
                             <Card>
                                 <Card.Body>
@@ -95,8 +118,8 @@ function BooleanResultsPage() {
                                         {result.sentiment.charAt(0).toUpperCase() + result.sentiment.slice(1)}
                                     </Badge>
                                     <Badge bg="dark" className="me-2">
-                                            {result.sentiment.charAt(0).toUpperCase() + result.sentiment.slice(1)}
-                                        </Badge>
+                                        {result.sentiment.charAt(0).toUpperCase() + result.sentiment.slice(1)}
+                                    </Badge>
                                     <Card.Text>
                                         <strong>Date:</strong> {result.date}<br />
                                         <strong>Summary:</strong> {result.summary}
@@ -109,11 +132,7 @@ function BooleanResultsPage() {
                 </ul>
 
                 <Container className="d-flex justify-content-center mt-4">
-                    <Pagination>
-                        <Pagination.Item>{1}</Pagination.Item>
-                        <Pagination.Item>{2}</Pagination.Item>
-                        {/* Add more items as needed */}
-                    </Pagination>
+                    <Pagination>{renderPaginationItems()}</Pagination>
                 </Container>
             </Container>
         </>
