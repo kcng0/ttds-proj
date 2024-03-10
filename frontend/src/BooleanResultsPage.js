@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { fetchSearchBoolean } from './api';
-import { Container, Navbar, Nav, InputGroup, FormControl, Button, Card, Spinner, Pagination, Badge, Form, Row, Col } from 'react-bootstrap';
+import { Container, Navbar, Nav, InputGroup, FormControl, Button, Card, Spinner, Badge, Form, Row, Col, Pagination } from 'react-bootstrap';
 import { BsSearch } from 'react-icons/bs';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import QueryExpansion from './queryExpansion';
+
 
 const SentimentBadge = ({ sentiments }) => {
   const getColorWithIntensity = (baseColor, value) => {
@@ -63,6 +64,7 @@ const SentimentBadge = ({ sentiments }) => {
   );
 };
 
+
 function BooleanResultsPage() {
     const { searchResults } = useLocation().state || { searchResults: [] };
     let navigate = useNavigate();
@@ -71,6 +73,9 @@ function BooleanResultsPage() {
     const [filterYear, setFilterYear] = useState('all');
     const [sentimentFilter, setSentimentFilter] = useState('all');
     const [sourceFilter, setSourceFilter] = useState('all');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [resultsPerPage, setResultsPerPage] = useState(5);
+
 
   
     useEffect(() => {
@@ -108,35 +113,49 @@ function BooleanResultsPage() {
       setSearchQuery(newQuery);
       performSearch(newQuery);
     };
-  
-    const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: currentYear - 2020 }, (v, i) => currentYear - i);
-    const uniqueSources = Array.from(new Set(searchResults.map(result => result.source)));
 
-    const filteredResults = searchResults.filter(result => {
-      const resultYear = new Date(result.date).getFullYear().toString();
-      const meetsYearCriteria = filterYear === 'all' || resultYear === filterYear;
-      const meetsSourceCriteria = sourceFilter === 'all' || result.source === sourceFilter;
-
-      if (!meetsYearCriteria) return false;
-  
-      if (sentimentFilter === 'all') return true;
-  
-      const sentimentScores = result.sentiment.reduce((acc, curr) => {
-        const [type, value] = curr.split(': ');
-        acc[type] = parseFloat(value);
-        return acc;
-      }, {});
-  
-      return sentimentScores[sentimentFilter] === Math.max(...Object.values(sentimentScores));
-    }).sort((a, b) => {
-      if (sentimentFilter === 'all') return 0;
-      const scoreA = a.sentiment.find(item => item.includes(sentimentFilter)).split(': ')[1];
-      const scoreB = b.sentiment.find(item => item.includes(sentimentFilter)).split(': ')[1];
-      return parseFloat(scoreB) - parseFloat(scoreA);
-    }
     
-    )
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: currentYear - 2020 + 1 }, (_, i) => String(currentYear - i));
+    
+    const uniqueSources = Array.from(new Set(searchResults.map(result => result.source)));
+    const filteredResults = searchResults
+  .filter(result => {
+   
+    const resultYear = new Date(result.date).getFullYear().toString();
+    const meetsYearCriteria = filterYear === 'all' || resultYear === filterYear;
+
+    const meetsSourceCriteria = sourceFilter === 'all' || result.source === sourceFilter;
+
+    if (!meetsYearCriteria || !meetsSourceCriteria) return false;
+
+    return true;
+  })
+  .sort((a, b) => {
+    const yearA = new Date(a.date).getFullYear();
+    const yearB = new Date(b.date).getFullYear();
+    if (yearA !== yearB) {
+      return yearB - yearA; 
+    }
+
+    
+    const sentimentScoreA = a.sentiment.find(item => item.includes(sentimentFilter))?.split(': ')[1] || '0';
+    const sentimentScoreB = b.sentiment.find(item => item.includes(sentimentFilter))?.split(': ')[1] || '0';
+    if (sentimentScoreA !== sentimentScoreB) {
+      return parseFloat(sentimentScoreB) - parseFloat(sentimentScoreA); 
+    }
+
+    return a.source.localeCompare(b.source); 
+  });
+
+
+    const indexOfLastResult = currentPage * resultsPerPage;
+    const indexOfFirstResult = indexOfLastResult - resultsPerPage;
+    const currentResults = filteredResults.slice(indexOfFirstResult, indexOfLastResult);
+
+  
+
+
     const ColorCodingGuide = () => (
         <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
           <Badge bg="success" text="dark">Positive</Badge>
@@ -144,30 +163,31 @@ function BooleanResultsPage() {
           <Badge bg="danger" text="dark">Negative</Badge>
         </div>
       );
-
-  
-    return (
-      <>
-        <Navbar bg="light" expand="lg">
+   
+     
+    
+      return (
+        <>
+          <Navbar bg="light" expand="lg">
+            <Container>
+              <Navbar.Brand as={Link} to="/">FactChecker</Navbar.Brand>
+              <Navbar.Toggle aria-controls="basic-navbar-nav" />
+              <Navbar.Collapse id="basic-navbar-nav">
+                <Nav className="me-auto">
+                  <Nav.Link as={Link} to="/">Home</Nav.Link>
+                  <Nav.Link as={Link} to="/how-it-works">How It Works</Nav.Link>
+                </Nav>
+              </Navbar.Collapse>
+            </Container>
+          </Navbar>
+      
+          <QueryExpansion onQuerySelect={handleQueryExpansionSelect} currentQuery={searchQuery} />
+      
           <Container>
-            <Navbar.Brand as={Link} to="/">FactChecker</Navbar.Brand>
-            <Navbar.Toggle aria-controls="basic-navbar-nav" />
-            <Navbar.Collapse id="basic-navbar-nav">
-              <Nav className="me-auto">
-                <Nav.Link as={Link} to="/">Home</Nav.Link>
-                <Nav.Link as={Link} to="/how-it-works">How It Works</Nav.Link>
-              </Nav>
-            </Navbar.Collapse>
-          </Container>
-        </Navbar>
-  
-        <QueryExpansion onQuerySelect={handleQueryExpansionSelect} currentQuery={searchQuery} />
-  
-        <Container>
-          <Row>
-            <Col md={3} className="filter-sidebar">
-              <h4>Filter Results</h4>
-              <Form>
+            <Row>
+              <Col md={3} className="filter-sidebar">
+                <h4>Filter Results</h4>
+                <Form>
                 <Form.Group controlId="filterYear">
                   <Form.Label>Year</Form.Label>
                   <Form.Select value={filterYear} onChange={e => setFilterYear(e.target.value)}>
@@ -194,39 +214,51 @@ function BooleanResultsPage() {
                         <option key={index} value={source}>{source}</option>
                             ))}
                         </Form.Select>
-                            </Form.Group>
+                </Form.Group>
                 </Form>
+              </Col>
+              <Col md={9}>
+                <h2>Boolean Search Results</h2>
+                <ColorCodingGuide /> 
+                {loading ? (
+                  <Spinner animation="border" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </Spinner>
+                ) : (
+                  currentResults.length > 0 ? currentResults.map((result, index) => (
+                    <Card key={index} className="mb-3">
+                      <Card.Body>
+                        <Card.Title>{result.title}</Card.Title>
+                        <SentimentBadge sentiments={result.sentiment.map(item => {
+                          const parts = item.split(':');
+                          return { type: parts[0].trim(), value: parseFloat(parts[1]) };
+                        })} />
+                        <Card.Text>
+                          <strong>Date:</strong> {result.date}<br />
+                          <strong>Summary:</strong> {result.summary}
+                        </Card.Text>
+                        <Button variant="primary" href={result.url}>Read More</Button>
+                      </Card.Body>
+                    </Card>
+                  )) : <div>No results found for the selected filters.</div>
+                )}
+                <div className="pagination-controls d-flex justify-content-center align-items-center mt-3">
+                  {Array.from({ length: Math.ceil(filteredResults.length / resultsPerPage) }, (_, index) => (
+                    <Button 
+                        key={index} 
+                        variant={currentPage === index + 1 ? "primary" : "light"} 
+                        onClick={() => setCurrentPage(index + 1)}
+                        className="me-2"
+                    >
+                    {index + 1}
+                    </Button>
+                    ))}
+                </div>
             </Col>
-            <Col md={9}>
-            <h2>Boolean Search Results</h2>
-            <ColorCodingGuide /> {/* Color Coding Guide */}
-              {loading ? (
-                <Spinner animation="border" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </Spinner>
-              ) : (
-                filteredResults.length > 0 ? filteredResults.map((result, index) => (
-                  <Card key={index} className="mb-3">
-                    <Card.Body>
-                      <Card.Title>{result.title}</Card.Title>
-                      <SentimentBadge sentiments={result.sentiment.map(item => {
-                        const parts = item.split(':');
-                        return { type: parts[0].trim(), value: parseFloat(parts[1]) };
-                      })} />
-                      <Card.Text>
-                        <strong>Date:</strong> {result.date}<br />
-                        <strong>Summary:</strong> {result.summary}
-                      </Card.Text>
-                      <Button variant="primary" href={result.url}>Read More</Button>
-                    </Card.Body>
-                  </Card>
-                )) : <div>No results found for the selected filters.</div>
-              )}
-            </Col>
-          </Row>
-        </Container>
-      </>
-    );
-  }
-  
-  export default BooleanResultsPage;
+            </Row>
+          </Container>
+        </>
+      );
+        
+}
+export default BooleanResultsPage;
