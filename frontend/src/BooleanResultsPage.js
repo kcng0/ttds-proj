@@ -67,19 +67,18 @@ const SentimentBadge = ({ sentiments }) => {
 
 function BooleanResultsPage() {
 
-    const [darkMode, setDarkMode] = useState(false);
-    useEffect(() => {
-      // Check for saved user preference, if available
-      const isDarkMode = localStorage.getItem('darkMode') === 'true';
-      setDarkMode(isDarkMode);
-    }, []);
+    // const [darkMode, setDarkMode] = useState(false);
+    // useEffect(() => {
+    //   // Check for saved user preference, if available
+    //   const isDarkMode = localStorage.getItem('darkMode') === 'true';
+    //   setDarkMode(isDarkMode);
+    // }, []);
   
-    const toggleDarkMode = () => {
-      setDarkMode(!darkMode);
-      localStorage.setItem('darkMode', !darkMode); // Save preference
-    };
+    // const toggleDarkMode = () => {
+    //   setDarkMode(!darkMode);
+    //   localStorage.setItem('darkMode', !darkMode); // Save preference
+    // };
   
-
     const { searchResults } = useLocation().state || { searchResults: [] };
     let navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
@@ -91,7 +90,6 @@ function BooleanResultsPage() {
     const [resultsPerPage, setResultsPerPage] = useState(5);
 
 
-  
     useEffect(() => {
       const searchParams = new URLSearchParams(window.location.search);
       const query = searchParams.get('q');
@@ -134,15 +132,11 @@ function BooleanResultsPage() {
     
     const uniqueSources = Array.from(new Set(searchResults.map(result => result.source)));
     const filteredResults = searchResults
-  .filter(result => {
-   
-    const resultYear = new Date(result.date).getFullYear().toString();
-    const meetsYearCriteria = filterYear === 'all' || resultYear === filterYear;
-
-    const meetsSourceCriteria = sourceFilter === 'all' || result.source === sourceFilter;
-
+          .filter(result => {
+          const resultYear = new Date(result.date).getFullYear().toString();
+          const meetsYearCriteria = filterYear === 'all' || resultYear === filterYear;
+          const meetsSourceCriteria = sourceFilter === 'all' || result.source === sourceFilter;
     if (!meetsYearCriteria || !meetsSourceCriteria) return false;
-
     return true;
   })
   .sort((a, b) => {
@@ -152,23 +146,20 @@ function BooleanResultsPage() {
       return yearB - yearA; 
     }
 
+    // Parse sentiment data before using it as it is in different format now with an /
+    const sentimentA = JSON.parse(a.sentiment);
+    const sentimentB = JSON.parse(b.sentiment);
     
-    const sentimentScoreA = a.sentiment.find(item => item.includes(sentimentFilter))?.split(': ')[1] || '0';
-    const sentimentScoreB = b.sentiment.find(item => item.includes(sentimentFilter))?.split(': ')[1] || '0';
-    if (sentimentScoreA !== sentimentScoreB) {
-      return parseFloat(sentimentScoreB) - parseFloat(sentimentScoreA); 
-    }
+    const sentimentScoreA = sentimentA.find(item => item.includes(sentimentFilter))?.split(': ')[1] || '0';
+    const sentimentScoreB = sentimentB.find(item => item.includes(sentimentFilter))?.split(': ')[1] || '0';
 
-    return a.source.localeCompare(b.source); 
+    return parseFloat(sentimentScoreB) - parseFloat(sentimentScoreA);
   });
 
 
     const indexOfLastResult = currentPage * resultsPerPage;
     const indexOfFirstResult = indexOfLastResult - resultsPerPage;
     const currentResults = filteredResults.slice(indexOfFirstResult, indexOfLastResult);
-
-  
-
 
     const ColorCodingGuide = () => (
         <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
@@ -177,8 +168,6 @@ function BooleanResultsPage() {
           <Badge bg="danger" text="dark">Negative</Badge>
         </div>
       );
-   
-     
     
       return (
         
@@ -245,10 +234,10 @@ function BooleanResultsPage() {
                     <Card key={index} className="mb-3">
                       <Card.Body>
                         <Card.Title>{result.title}</Card.Title>
-                        <SentimentBadge sentiments={result.sentiment.map(item => {
-                          const parts = item.split(':');
-                          return { type: parts[0].trim(), value: parseFloat(parts[1]) };
-                        })} />
+                        <SentimentBadge sentiments={JSON.parse(result.sentiment).map(item => {
+                        const parts = item.split(':');
+                        return { type: parts[0].trim(), value: parseFloat(parts[1]) };
+                          })} />
                         <Card.Text>
                           <strong>Date:</strong> {result.date}<br />
                           <strong>Summary:</strong> {result.summary}
@@ -274,7 +263,6 @@ function BooleanResultsPage() {
             </Row>
           </Container>
         </>
-      );
-        
+      ); 
 }
 export default BooleanResultsPage;
