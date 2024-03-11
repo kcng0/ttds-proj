@@ -167,3 +167,23 @@ clientLibraryConfig-github.json
 data/
 backend/utils/result/
 backend/utils/index
+backend/tutorial (1).ipynb
+backend/utils/spell_checking_and_autocomplete_files/corpus.txt
+backend/statiba.ipynb
+backend/utils/word2vec.ipynb
+backend/utils/word2vec_files/processed_documents_unstemmed_list.pkl
+backend/utils/word2vec_files/word2vec_100_5.model
+backend/utils/word2vec_files/word2vec_100_5.model.syn1neg.npy
+backend/utils/word2vec_files/word2vec_100_5.model.wv.vectors.npy
+backend/utils/word2vec_files/word2vec_100_10.model
+backend/utils/word2vec_files/word2vec_100_10.model.syn1neg.npy
+backend/utils/word2vec_files/word2vec_100_10.model.wv.vectors.npy
+backend/utils/word2vec_files/word2vec_200_5.model
+backend/utils/word2vec_files/word2vec_200_5.model.syn1neg.npy
+backend/utils/word2vec_files/word2vec_200_5.model.wv.vectors.npy
+backend/utils/word2vec_files/word2vec_200_10.model
+backend/utils/word2vec_files/word2vec_200_10.model.syn1neg.npy
+backend/utils/word2vec_files/word2vec_200_10.model.wv.vectors.npy
+backend/utils/word2vec_files/combined_contents.csv
+backend/utils/tutorial.ipynb
+backend/utils/live_index_tutorial.ipynb

@@ -9,8 +9,11 @@ from datetime import date
 from constant import DATA_PATH, Source
 from basetype import NewsArticlesFragment, NewsArticleData, NewsArticlesBatch
 import numpy as np
+import logging
 
-STOP_WORDS_FILE = "ttds_2023_english_stop_words.txt"
+# STOP_WORDS_FILE = "ttds_2023_english_stop_words.txt"
+from constant import STOP_WORDS_FILE_PATH as STOP_WORDS_FILE
+
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 stemmer = PorterStemmer()
@@ -211,6 +214,30 @@ def append_index_to_csv(source: Source, date: date, start_doc_id: int) -> int:
     # save the current_doc_id to a file
     with open("current_doc_id.txt", "w") as f:
         f.write(str(current_doc_id))
+
+class Logger:
+    def __init__(self, logfile):
+        self.logfile = logfile
+        self.logger = logging.getLogger('custom_logger')
+        self.logger.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        file_handler = logging.FileHandler(logfile)
+        file_handler.setFormatter(formatter)
+        self.logger.addHandler(file_handler)
+
+    def log_event(self, level, message):
+        if level == 'debug':
+            self.logger.debug(message)
+        elif level == 'info':
+            self.logger.info(message)
+        elif level == 'warning':
+            self.logger.warning(message)
+        elif level == 'error':
+            self.logger.error(message)
+        elif level == 'critical':
+            self.logger.critical(message)
+        else:
+            raise ValueError("Invalid log level")
 
 
 if __name__ == "__main__":

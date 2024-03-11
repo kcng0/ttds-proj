@@ -15,7 +15,7 @@ app = FastAPI(dependencies=[])
 # change the port if you want (react app)
 origins = [
     "https://ttds18-67d62zc6ua-ew.a.run.app/",
-    # "http://127.0.0.1:8080",
+    "http://127.0.0.1:8080",
     "http://localhost:3000",
     "localhost:3000",
 ]
@@ -30,8 +30,9 @@ app.add_middleware(
 app.include_router(api_router)
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", 
-                host="127.0.0.1",
-                port=8001,
-                reload=True,
-                )
+    uvicorn.run(
+        "main:app",
+        host="127.0.0.1",
+        port=8001,
+        reload=True,
+    )
