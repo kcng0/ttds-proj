@@ -7,7 +7,8 @@ import BooleanResultsPage from './BooleanResultsPage';
 import TfidfResultsPage from './TfidfResultsPage';
 import ErrorPage from './ErrorPage';
 import HowItWorks from './HowItWorks';
-import { fetchSearchResults, fetchSearchBoolean, fetchSearchTfidf } from './api';
+import { fetchSearchResults, fetchSearchBoolean, fetchSearchTfidf} from './api';
+import BASE_URL from './api';
 import logoImage from './logo.png';
 import debounce from 'lodash.debounce';
 
@@ -53,7 +54,7 @@ function App() {
         }
       
         try {
-          const response = await fetch(`http://127.0.0.1:8080/search/expand-query/`, { 
+          const response = await fetch(`${BASE_URL}/search/expand-query/`, { 
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

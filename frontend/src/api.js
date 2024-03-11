@@ -4,6 +4,8 @@ import axios from 'axios';
 // const BASE_URL = 'http://127.0.0.1:8080'; // Update with your backend URL
 const BASE_URL = 'https://ttds18-67d62zc6ua-ew.a.run.app'; // Update with your backend URL
 
+export default BASE_URL;
+
 export const fetchSearchResults = async (query, year, page = 1, limit = 10) => {
     // Remove empty parameters from the request
     const params = new URLSearchParams();
