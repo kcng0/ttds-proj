@@ -8,7 +8,8 @@ from utils.basetype import Result
 from utils.query_engine import boolean_test, ranked_test
 from utils.redis_utils import caching_query_result, get_cache, get_docs_fields, check_cache_exists
 from utils.basetype import RedisKeys, RedisDocKeys
-from ai.QE_Bert import expand_query
+#from ai.QE_Bert import expand_query
+from utils.roberta import expand_query
 from math import ceil
 
 router = APIRouter(
