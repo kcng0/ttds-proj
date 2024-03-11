@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { Container, InputGroup, FormControl, Button, Navbar, Nav } from 'react-bootstrap';
 import { BsSearch } from 'react-icons/bs';
@@ -8,11 +8,14 @@ import TfidfResultsPage from './TfidfResultsPage';
 import HowItWorks from './HowItWorks';
 import { fetchSearchResults, fetchSearchBoolean, fetchSearchTfidf } from './api';
 import logoImage from './logo.png';
+import debounce from 'lodash.debounce';
 
 function App() {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [searchType, setSearchType] = useState('standard'); // 'standard' or 'boolean'
+    const [suggestions, setSuggestions] = useState([]);
+
     let navigate = useNavigate();
 
     const handleSearchClick = async () => {
@@ -35,7 +38,39 @@ function App() {
           console.error(`Error fetching ${searchType} search results:`, error);
         }
       };
+      const fetchSuggestions = async (query) => {
+        if (!query.trim()) {
+          setSuggestions([]);
+          return;
+        }
       
+        try {
+          const response = await fetch(`http://localhost:8000/search/expand-query/`, { 
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ query: query, num_expansions: 5 }), // Adjust num_expansions as needed
+          });
+          const data = await response.json();
+          setSuggestions(data.expanded_queries);
+        } catch (error) {
+          console.error('Error fetching query suggestions:', error);
+          setSuggestions([]);
+        }
+      };
+      const debouncedFetchSuggestions = debounce(fetchSuggestions, 300);
+            const handleChange = (e) => {
+                const query = e.target.value;
+                setSearchQuery(query);
+                debouncedFetchSuggestions(query);
+            };
+      // --> clean up the debounced function on unmount
+            useEffect(() => {
+            return () => {
+            debouncedFetchSuggestions.cancel();
+            };
+  }, []);
 
     return (
         <>
@@ -64,10 +99,9 @@ function App() {
                             placeholder="Search"
                             aria-label="Search"
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            spellCheck="true" // Enable spell check here
-                            autoComplete='on' // Enable autocomplete here
-                            autoCorrect='on' // Enable auto correct here
+                            onChange={handleChange} // Updated to use the new handleChange function                            spellCheck="true" // Enable spell check here
+                            autoComplete='on' // Enabled autocomplete here
+                            autoCorrect='on' // Enabled auto correct here
                             
                         />
                         <select
@@ -84,6 +118,22 @@ function App() {
                             <BsSearch />
                         </Button>
                     </InputGroup>
+                    {suggestions.length > 0 && (
+    <ul className="list-group">
+      {suggestions.map((suggestion, index) => (
+        <li
+          key={index}
+          className="list-group-item list-group-item-action"
+          onClick={() => {
+            setSearchQuery(suggestion);
+            setSuggestions([]); // Clear suggestions after selection
+          }}
+        >
+          {suggestion}
+        </li>
+      ))}
+    </ul>
+  )}
                 </div>
             </Container>
 

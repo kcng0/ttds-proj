@@ -66,6 +66,20 @@ const SentimentBadge = ({ sentiments }) => {
 
 
 function BooleanResultsPage() {
+
+    const [darkMode, setDarkMode] = useState(false);
+    useEffect(() => {
+      // Check for saved user preference, if available
+      const isDarkMode = localStorage.getItem('darkMode') === 'true';
+      setDarkMode(isDarkMode);
+    }, []);
+  
+    const toggleDarkMode = () => {
+      setDarkMode(!darkMode);
+      localStorage.setItem('darkMode', !darkMode); // Save preference
+    };
+  
+
     const { searchResults } = useLocation().state || { searchResults: [] };
     let navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
@@ -167,7 +181,9 @@ function BooleanResultsPage() {
      
     
       return (
+        
         <>
+        
           <Navbar bg="light" expand="lg">
             <Container>
               <Navbar.Brand as={Link} to="/">FactChecker</Navbar.Brand>
