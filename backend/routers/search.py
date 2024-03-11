@@ -14,7 +14,7 @@ from utils.redis_utils import (
 )
 from utils.basetype import RedisKeys, RedisDocKeys
 #from ai.QE_Bert import expand_query
-# from utils.roberta import expand_query
+from utils.roberta import expand_query
 from math import ceil
 from utils.spell_checker import SpellChecker
 from utils.query_suggestion import QuerySuggestion
@@ -186,8 +186,8 @@ async def spellcheck(
     return spell_checker.correct_query(q)
 
 
-query_suggestion = QuerySuggestion(monogram_pkl_path=MONOGRAM_PKL_PATH)
-query_suggestion.load_words(words_path=MONOGRAM_AND_BIGRAM_DICTIONARY_PATH)
+# query_suggestion = QuerySuggestion(monogram_pkl_path=MONOGRAM_PKL_PATH)
+# query_suggestion.load_words(words_path=MONOGRAM_AND_BIGRAM_DICTIONARY_PATH)
 
 # @router.post("/suggest_query")
 # async def suggestquery(
@@ -209,25 +209,26 @@ class ExpansionQuery(BaseModel):
     query: str
     num_expansions: int = 10  # Default value set to 10
 
-@router.post("/expand-query/")
-async def expand_query_api(query_data: ExpansionQuery):
-    
-
-    # expanded_query = expand_query(query_data.query, query_data.num_expansions)
-    suggestions =  query_suggestion.get_query_suggestions(query_data.query)
-    # return ORJSONResponse(content={"expanded_queries": expanded_query})
-    return ORJSONResponse(content={"expanded_queries": suggestions})
-
-
-# class ExpansionQuery(BaseModel):  
-#     query: str
-#     num_expansions: int = 10  # Default value set to 10
-
+# Query with bigram model
 # @router.post("/expand-query/")
 # async def expand_query_api(query_data: ExpansionQuery):
     
 
 #     # expanded_query = expand_query(query_data.query, query_data.num_expansions)
+#     suggestions =  query_suggestion.get_query_suggestions(query_data.query)
 #     # return ORJSONResponse(content={"expanded_queries": expanded_query})
-#     return ORJSONResponse(content={"expanded_queries": ['test1', 'test2', 'test3']})
+#     return ORJSONResponse(content={"expanded_queries": suggestions})
+
+# Query Expansion with Roberta
+class ExpansionQuery(BaseModel):  
+    query: str
+    num_expansions: int = 10  # Default value set to 10
+
+@router.post("/expand-query/")
+async def expand_query_api(query_data: ExpansionQuery):
+    
+
+    expanded_query = expand_query(query_data.query, query_data.num_expansions)
+    return ORJSONResponse(content={"expanded_queries": expanded_query})
+    # return ORJSONResponse(content={"expanded_queries": ['test1', 'test2', 'test3']})
 
