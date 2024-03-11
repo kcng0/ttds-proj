@@ -14,7 +14,7 @@ from datetime import datetime
 BASEPATH = os.path.dirname(__file__)
 sys.path.append(BASEPATH)
 
-from utils import (
+from utils_crawler import (
     get_content,
     get_hyper_text_str,
     get_figcaption_str,

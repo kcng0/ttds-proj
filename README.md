@@ -17,9 +17,17 @@ conda create -n ttds-proj python=3.12.1
 conda activate ttds-proj
 
 # Install requirements:
+
+### Windows Requirements
+ Visual Studio 2022 Community ed. ([install](https://visualstudio.microsoft.com/downloads/)) and installing "Desktop development with C++" having checked the optional features of MSVC and Windows 11 SDK. 
+
+### Linux Requirements
+`sudo apt update` and `sudo apt install build-essential`.
+
+## General Requirements (only after OS requirements)
 pip install -r requirements.txt
 
-Microsoft Visual C++ 14.0 and Windows SDK (10.0.22621) (or similar, to contain the math.h header).
+
 
 # docker build:
 docker build -t fastapi:latest .
@@ -56,9 +64,11 @@ create commit to branch "deploy"
         - pull_index.py (playground for pulling)
         - push_index.py (utils for pushing inverted index to db)
         - query_engine.py (query engine(boolean, tf-idf, etc))
+        - query_suggestion.py (query suggestion when typing)
         - redis_utils.py (redis utils)
-        - sentiment_analyzer.py (sentiment analysis utils)
-        - spell_checker.py (spell checker and auto correct)
+        - sentiment_analyzer.py (sentiment analysis class and utils)
+        - spell_checker.py (spell checker class and utils)
+        - summarizer.py (utils for getting summaries for documents)
         - ttds_2023_english_stop_words.txt (stop words)
     - \_\_init\_\_.py
     - .dockerignore
