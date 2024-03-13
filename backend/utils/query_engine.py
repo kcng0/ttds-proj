@@ -290,13 +290,18 @@ def is_valid_query(query: str) -> bool:
         return False
     return True
 
+def check_query(query: str, stopping: bool = True, stemming: bool = True, special_patterns: Dict[str, re.Pattern] = SPECIAL_PATTERN) -> bool:
+    query = re.sub(r"(\w+)", lambda x: preprocess_match(x, stopping, stemming), query)
+    if not is_valid_query(query):
+        return False
+    return True
 
 async def evaluate_boolean_query(
     query: str,
     doc_ids_list: List[int],
     stopping: bool = True,
     stemming: bool = True,
-    special_patterns: dict[str, re.Pattern] = SPECIAL_PATTERN,
+    special_patterns: Dict[str, re.Pattern] = SPECIAL_PATTERN,
 ) -> List:
     # query = " ".join([token.lower() if token not in ["AND", "OR", "NOT"] else token for token in query.split("\w+ ")])
     query = re.sub(r"(\w+)", lambda x: preprocess_match(x, stopping, stemming), query)
@@ -419,8 +424,8 @@ async def ranked_test(
 
 
 async def main():
-    print(await boolean_test())
-    # await ranked_test()
+    # print(await boolean_test())
+    await ranked_test(["Donald Trump and Biden in 2024 USA"])
 
     #### BENCHMARKING
     # result = await ranked_test()

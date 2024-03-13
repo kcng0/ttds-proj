@@ -195,7 +195,7 @@ async def set_news_data(article: NewsArticleData):
     doc_url = article.url
     doc_id = RedisKeys.document(article.doc_id)
     doc_date = article.date
-    doc_sentiment = 'neutral'
+    doc_sentiment = orjson.dumps([f"negative:0.0", f"neutral:1.0", f"positive:0.0"])
     doc_summary = ".".join(article.content.split('.')[:3])
     doc_source = article.url.split('.')[1]
     doc_topic = "-".join(article.url.split("/")[3:-1][:2])
@@ -307,16 +307,40 @@ async def is_key_exists(key):
     return await redis_async_connection[0].exists(key)
 
 @do_check_async_redis_connection(db=2)
-async def set_cache(key: str, value: str):
-    print("Setting cache")
+async def set_cache(key: str, doc_ids_list: List[int], **kwargs):
+    if await check_cache_exists(key):
+        return
+    
+    doc_data = await get_docs_fields(doc_ids_list,
+                                    [RedisDocKeys.title,
+                                    RedisDocKeys.topic,
+                                    RedisDocKeys.url, 
+                                    RedisDocKeys.source, 
+                                    RedisDocKeys.date, 
+                                    RedisDocKeys.sentiment, 
+                                    RedisDocKeys.summary])
+    response_data = {
+        "results": doc_data,
+    }
+    for k, v in kwargs.items():
+        response_data[k] = v
+        
     # set expiration time to 5 minutes
-    await redis_async_connection[2].setex(key, 300, value)
+    await redis_async_connection[2].setex(key, 300, orjson.dumps(response_data))
 
 @do_check_async_redis_connection(db=2)
-async def caching_query_result(method: str, query: str, result):
-    key = f"{method}:{query}"
-    # non-blocking set operation
-    asyncio.create_task(set_cache(key, orjson.dumps(result)))
+async def caching_query_result(method: str, query: str, page_doc_ids_dict: Dict[int, List[int]], **kwargs):
+    for page_num, doc_ids_list in page_doc_ids_dict.items():
+        key = RedisKeys.cache(method, query, page_num)
+        
+        # non-blocking set operation
+        if "scores" in kwargs and "total_pages" in kwargs:
+            asyncio.create_task(set_cache(key, doc_ids_list, total_pages=kwargs["total_pages"], scores=kwargs["scores"][page_num]))
+        elif "total_pages" in kwargs:
+            asyncio.create_task(set_cache(key, doc_ids_list, total_pages=kwargs["total_pages"]))
+        else:
+            print(kwargs)
+            raise ValueError("Invalid kwargs")
 
 @do_check_async_redis_connection(db=2)
 async def check_cache_exists(key: str):
@@ -325,6 +349,7 @@ async def check_cache_exists(key: str):
 @do_check_async_redis_connection(db=2)
 async def get_cache(key: str):
     asyncio.create_task(redis_async_connection[2].expire(key, 300))
+    print(f"Getting cache for {key}")
     return orjson.loads(await redis_async_connection[2].get(key))
     
 

@@ -11,7 +11,6 @@ index = {}
 doc_lengths = {}
 documents = {}
 
-
 class Article(NamedTuple):
     title: str
     body: str

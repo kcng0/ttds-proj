@@ -30,14 +30,6 @@ from common import Logger
 from basetype import RedisDocKeys
 from push_data_colwise import do_gather_task_push_value, func_sentiment
 
-today = datetime.now()
-today_str = today.strftime("%Y%m%d")
-today_str_dash = today.strftime("%Y-%m-%d")
-folder_path = os.path.join(UTILPATH, "data", today_str)
-
-inputfile = os.path.join(folder_path, f"data_{today_str}.csv")
-outputfile = os.path.join(folder_path, f"sentiment_dictionary.json")
-
 
 def analyze_sentiment(text, model=MODEL, tokenizer=TOKENIZER, device=DEVICE):
     """
@@ -110,25 +102,52 @@ if __name__ == "__main__":
     logpath = os.path.join(UTILPATH, 'logger.log')
     logger = Logger(logpath)
 
-    logger.log_event('info', f'{FILENAME} - Start script')
-    sentiment_dictionary = {}
+    today = datetime.now()
+    # today = datetime(2024, 3, 9)
+    today_str = today.strftime("%Y%m%d")
+    today_str_dash = today.strftime("%Y-%m-%d")
+    folder_path = os.path.join(UTILPATH, "data", today_str)
 
-    logger.log_event('info', f'{FILENAME} - Read Data in Chunk')
-    df_all = pd.read_csv(inputfile, chunksize=100, usecols=["doc_id", "content"])
+    files = os.listdir(folder_path)
+    files = [i for i in files if f'data_{today_str}' in i]
 
-    # Iterate over each file in the current outlet folder
-    logger.log_event('info', f'{FILENAME} - Iterating')
-    for df in tqdm(df_all):
-        # Read the current CSV file into a pandas DataFrame
-        sentiment_dictionary = get_sentiment_dictionary_from_df(
-            df, csv_sentiment_dictionary=sentiment_dictionary
-        )
-    logger.log_event('info', f'{FILENAME} - Dumping the data to json')
+    # inputfile = os.path.join(folder_path, f"data_{today_str}.csv")
 
-    with open(outputfile, "wb") as file:
-        file.write(orjson.dumps(sentiment_dictionary))
+    for idx, f in tqdm(enumerate(files)):
+        inputfile = os.path.join(folder_path, f)
+        indexpath = f"data/{today_str}"
+        indexname = f.replace('data_', 'sentiment_').replace('.csv', '.json')
 
-    logger.log_event('info', f'{FILENAME} - Updating the sentiment on Redis')
-    asyncio.run(do_gather_task_push_value(sentiment_dictionary, RedisDocKeys.sentiment, func_sentiment))
+        outputfile = os.path.join(folder_path, indexname)
+        if os.path.exists(outputfile):
+            # skip if the index does exist
+            # with open(outputfile, "rb") as file:
+            #     sentiment_dictionary = orjson.loads(file.read())
+            #     # file.write(orjson.dumps(sentiment_dictionary))
+            # logger.log_event('info', f'{FILENAME} - {idx} Updating the sentiment on Redis')
+            # asyncio.run(do_gather_task_push_value(sentiment_dictionary, RedisDocKeys.sentiment, func_sentiment))
+            continue
+        print("No Thanks")
+
+        logger.log_event('info', f'{FILENAME} - {idx} Start script')
+        sentiment_dictionary = {}
+
+        logger.log_event('info', f'{FILENAME} - {idx} Read Data in Chunk')
+        df_all = pd.read_csv(inputfile, chunksize=100, usecols=["doc_id", "content"])
+
+        # Iterate over each file in the current outlet folder
+        logger.log_event('info', f'{FILENAME} - {idx} Iterating')
+        for df in tqdm(df_all):
+            # Read the current CSV file into a pandas DataFrame
+            sentiment_dictionary = get_sentiment_dictionary_from_df(
+                df, csv_sentiment_dictionary=sentiment_dictionary
+            )
+        logger.log_event('info', f'{FILENAME} - {idx} Dumping the data to json')
+
+        with open(outputfile, "wb") as file:
+            file.write(orjson.dumps(sentiment_dictionary))
+
+        logger.log_event('info', f'{FILENAME} - {idx} Updating the sentiment on Redis')
+        asyncio.run(do_gather_task_push_value(sentiment_dictionary, RedisDocKeys.sentiment, func_sentiment))
 
     logger.log_event('info', f'{FILENAME} - Done')
