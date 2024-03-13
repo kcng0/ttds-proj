@@ -5,7 +5,7 @@ from os import getenv
 from typing import Optional, Annotated
 from pydantic import BaseModel, Field
 from utils.basetype import Result
-from utils.query_engine import boolean_test, ranked_test
+from utils.query_engine import boolean_test, ranked_test, check_query
 from utils.redis_utils import (
     caching_query_result,
     get_cache,
@@ -18,6 +18,9 @@ from utils.roberta import expand_query
 from math import ceil
 from utils.spell_checker import SpellChecker
 from utils.query_suggestion import QuerySuggestion
+from urllib.parse import unquote
+from typing import List, Dict, Tuple
+
 from utils.constant import (
     MONOGRAM_PKL_PATH,
     STOP_WORDS_FILE_PATH,
@@ -67,6 +70,14 @@ async def test(body: TestBody):
     test_env = getenv("TESTING", "default")
     return ORJSONResponse(content={"field": body.field, "env": test_env})
 
+def paginate_doc_ids(doc_ids: List[int], current_page: int, limit: int, total_pages: int) -> Dict[int, List[int]]:
+    """Function to paginated doc_ids"""
+    start_page = max(current_page - 4, 1)
+    end_page = min(current_page + 4, total_pages)
+    page_doc_ids_dict = {}
+    for page in range(start_page, end_page + 1):
+        page_doc_ids_dict[page] = doc_ids[(page - 1) * limit : page * limit]
+    return page_doc_ids_dict
 
 @router.get("/boolean")
 async def boolean_search(
@@ -83,40 +94,47 @@ async def boolean_search(
     ```
     """
 
-    def pagination(results):
-        """Function to get a particular page
-        """
-        response = {
-            "results": results[0][(page - 1) * limit : page * limit],
-            "total_pages": ceil(len(results[0]) / limit),
-        }
-        return response
-
+    q = unquote(q)
+    
     # uncomment this when the caching is ready
-    if await check_cache_exists(RedisKeys.cache("boolean", q)):
-        results = await get_cache(RedisKeys.cache("boolean", q))
-        response = pagination(results)
-        return ORJSONResponse(content=response)
+    if await check_cache_exists(RedisKeys.cache("boolean", q, page)):
+        results = await get_cache(RedisKeys.cache("boolean", q, page))
+        return ORJSONResponse(content=results)
 
     results = await boolean_test([q])
-    if not results or len(results) > page * limit:
+    total_pages = ceil(len(results[0]) / limit)
+    if not results or len(results) > page * limit or total_pages == 0:
         return []
+    
+    
+    page_doc_ids_dict = paginate_doc_ids(results[0], page, limit, total_pages)
+    page_results = {}
+    page_results["results"] = await get_docs_fields(page_doc_ids_dict[page],
+                                                        [RedisDocKeys.title,
+                                                        RedisDocKeys.topic,
+                                                        RedisDocKeys.url,
+                                                        RedisDocKeys.source, 
+                                                        RedisDocKeys.date, 
+                                                        RedisDocKeys.sentiment, 
+                                                        RedisDocKeys.summary])
+    page_results["total_pages"] = ceil(len(results[0]) / limit)
 
-    # uncomment this if the document info is ready
-    for idx, doc_id_list in enumerate(results):
-        results[idx] = await get_docs_fields(doc_id_list, 
-                                             [RedisDocKeys.title, 
-                                              RedisDocKeys.url, 
-                                              RedisDocKeys.source, 
-                                              RedisDocKeys.date, 
-                                              RedisDocKeys.sentiment, 
-                                              RedisDocKeys.summary])
+    await caching_query_result("boolean", q, page_doc_ids_dict, total_pages=total_pages)
 
-    response = pagination(results)
-    await caching_query_result("boolean", q, results)
+    return ORJSONResponse(content=page_results)
 
-    return ORJSONResponse(content=response)
-
+def paginate_doc_ids_and_score(results: List[Tuple[int, float]], current_page: int, limit: int, total_pages: int) -> Tuple[Dict[int, List[int]], Dict[int, List[float]]]:
+    """Function to paginated doc_ids"""
+    start_page = max(current_page - 4, 1)
+    end_page = min(current_page + 4, total_pages)
+    page_doc_ids_dict = {}
+    page_score_dict = {}
+    
+    for page in range(start_page, end_page + 1):
+        page_doc_ids_dict[page] = [t[0] for t in results[(page - 1) * limit : page * limit]]
+        page_score_dict[page] = [t[1] for t in results[(page - 1) * limit : page * limit]]
+        
+    return page_doc_ids_dict, page_score_dict
 
 @router.get("/tfidf")
 async def tfidf_search(
@@ -133,40 +151,34 @@ async def tfidf_search(
     ```
     """
 
-    def pagination(results):
-        """Function to get a particular page"""
-        response = {
-            "results": results[0][(page - 1) * limit : page * limit],
-            "total_pages": ceil(len(results[0]) / limit),
-        }
-        return response
-
-    if await check_cache_exists(RedisKeys.cache("tfidf", q)):
-        results = await get_cache(RedisKeys.cache("tfidf", q))
-        response = pagination(results)
-        return ORJSONResponse(content=response)
+    q = unquote(q)
+    
+    if await check_cache_exists(RedisKeys.cache("tfidf", q, page)):
+        results = await get_cache(RedisKeys.cache("tfidf", q, page))
+        return ORJSONResponse(content=results)
 
     results = await ranked_test([q])
-
-    for idx, result in enumerate(results):
-        doc_id_list = [t[0] for t in result]
-        doc_info_list = await get_docs_fields(doc_id_list,
-                                                [RedisDocKeys.title, 
-                                                RedisDocKeys.url, 
-                                                RedisDocKeys.source, 
-                                                RedisDocKeys.date, 
-                                                RedisDocKeys.sentiment, 
-                                                RedisDocKeys.summary])
-        results[idx] = [{"score": t[1], **doc_info_list[i]} for i, t in enumerate(result)]
-        
-    if not results or len(results) > page*limit:
+    total_pages = ceil(len(results[0]) / limit)
+    if not results or len(results) > page * limit or total_pages == 0:
         return []
 
-    response = pagination(results)
+    page_doc_ids_dict, page_score_dict = paginate_doc_ids_and_score(results[0], page, limit, total_pages)
     
-    await caching_query_result("tfidf", q, results)
+    page_results = {}
+    page_results["results"] = await get_docs_fields(page_doc_ids_dict[page],
+                                                        [RedisDocKeys.title,
+                                                        RedisDocKeys.topic,
+                                                        RedisDocKeys.url, 
+                                                        RedisDocKeys.source, 
+                                                        RedisDocKeys.date, 
+                                                        RedisDocKeys.sentiment, 
+                                                        RedisDocKeys.summary])
+    page_results["total_pages"] = total_pages
+    page_results["scores"] = page_score_dict[page]
     
-    return ORJSONResponse(content=response)
+    await caching_query_result("tfidf", q, page_doc_ids_dict, total_pages=total_pages, scores=page_score_dict)
+    
+    return ORJSONResponse(content=page_results)
 
 
 spell_checker = SpellChecker(dictionary_path=MONOGRAM_PKL_PATH)
@@ -184,6 +196,19 @@ async def spellcheck(
     """
     # spell_checker.correct_query("bidan vs trumpp uneted stetes of amurica"))
     return spell_checker.correct_query(q)
+
+@router.get("/validate-boolean-query")
+async def validate_boolean_query(
+    q: str = Query(..., description="Search query", min_length=1, max_length=1024)
+):
+    r"""
+    Spell checking the query string. Returns a corrected string.
+    ```
+        - q: query to search (Treat every word as a seperated term). must be a string.
+    ```
+    """
+    # spell_checker.correct_query("bidan vs trumpp uneted stetes of amurica"))
+    return check_query(q)
 
 
 # query_suggestion = QuerySuggestion(monogram_pkl_path=MONOGRAM_PKL_PATH)
@@ -230,5 +255,4 @@ async def expand_query_api(query_data: ExpansionQuery):
 
     expanded_query = expand_query(query_data.query, query_data.num_expansions)
     return ORJSONResponse(content={"expanded_queries": expanded_query})
-    # return ORJSONResponse(content={"expanded_queries": ['test1', 'test2', 'test3']})
 

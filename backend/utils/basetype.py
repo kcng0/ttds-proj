@@ -111,7 +111,7 @@ class RedisKeys:
     """idf value for a term (float)"""
     document = lambda doc_id: f"doc:{doc_id}"
     """document record for a doc_id (Dict[source, title, url, date, summary, sentiment])"""
-    cache = lambda method, query: f"{method}:{query}"
+    cache = lambda method, query, page: f"{method}:{query}:{page}"
     """cache key for a query and method"""
 
 

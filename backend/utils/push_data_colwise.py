@@ -39,9 +39,16 @@ def func_summary(value):
     else:
         return "Unable to get summary."
 
+# Deprecated
+# def func_sentiment(value):
+#     labels = ['negative', 'neutral', 'positive']
+#     return labels[np.argmax(value)]
+    
 def func_sentiment(value):
-    labels = ['negative', 'neutral', 'positive']
-    return labels[np.argmax(value)]
+    if value is None:
+        value = [0, 1, 0]
+    res = [f"negative:{value[0]}", f"neutral:{value[1]}", f"positive:{value[2]}"]
+    return orjson.dumps(res)
 
 if __name__ == "__main__":
     path_to_sentiment = "data/sentiment_dictionary.json"

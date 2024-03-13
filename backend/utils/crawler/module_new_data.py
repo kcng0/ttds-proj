@@ -14,6 +14,7 @@ FILENAME = os.path.basename(__file__)
 BASEPATH = os.path.dirname(__file__)
 UTILPATH = os.path.dirname(BASEPATH)
 
+sys.path.append(BASEPATH)
 sys.path.append(UTILPATH)
 
 from utils_crawler import run_scrape
@@ -33,23 +34,37 @@ def get_new_data(urls: dict, start_doc_id: int):
     return new_links
 
 
-def filter_data_link(data_links):
+def filter_data_link(data_links, is_df = False):
     data_link_clean = dict()
 
     max_age = 0
 
-    for l in data_links:
-        doc_url = l["loc"]
-        if "www.bbc.com" in doc_url:
-            if not (
-                ("https://www.bbc.com/news/" in doc_url)
-                or ("https://www.bbc.com/newsround/" in doc_url)
-                or ("https://www.bbc.com/sport/" in doc_url)
-                or ("https://www.bbc.com/weather/" in doc_url)
-            ):
-                continue
+    if not is_df:
+        for l in data_links:
+            doc_url = l["loc"]
+            if "www.bbc.com" in doc_url:
+                if not (
+                    ("https://www.bbc.com/news/" in doc_url)
+                    or ("https://www.bbc.com/newsround/" in doc_url)
+                    or ("https://www.bbc.com/sport/" in doc_url)
+                    or ("https://www.bbc.com/weather/" in doc_url)
+                ):
+                    continue
 
-        data_link_clean[l["loc"]] = l["lastmod"][:10]
+            data_link_clean[l["loc"]] = l["lastmod"][:10]
+    else:
+        for idx,l in data_links.iterrows():
+            doc_url = l["loc"]
+            if "www.bbc.com" in doc_url:
+                if not (
+                    ("https://www.bbc.com/news/" in doc_url)
+                    or ("https://www.bbc.com/newsround/" in doc_url)
+                    or ("https://www.bbc.com/sport/" in doc_url)
+                    or ("https://www.bbc.com/weather/" in doc_url)
+                ):
+                    continue
+
+            data_link_clean[l["loc"]] = l["lastmod"][:10]
 
     return data_link_clean
 
